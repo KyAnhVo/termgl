@@ -20,7 +20,7 @@ impl Triangle {
 }
 
 /// represents the color rgb (no alpha here)
-#[derive(Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct Color {
     pub r: u8,
     pub g: u8,
@@ -28,6 +28,11 @@ pub struct Color {
 }
 
 impl Color {
+    pub const WHITE: Color      = Color {   r: 255, g: 255, b: 255  };
+    pub const BLACK: Color      = Color {   r: 0,   g: 0,   b: 0    };
+    pub const SPACE_BLUE: Color = Color {   r: 26,  g: 43,  b: 76   };
+    pub const GREY: Color       = Color {   r: 128, g: 128, b: 128  };
+
     pub fn new(r: u8, g: u8, b: u8) -> Self { Self { r, g, b, } }
 }
 
@@ -39,6 +44,8 @@ pub struct Vertex {
 }
 
 impl Vertex {
+
+
     pub fn new(x: f32, y: f32, z: f32, rgb: Color) -> Self {
         Self {
             pos: Vec4::new(x, y, z, 1.0f32),
