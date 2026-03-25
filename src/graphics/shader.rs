@@ -1,5 +1,5 @@
-use glam::{Vec3, Vec4Swizzles};
-use crate::{Triangle, graphics::projection::Camera};
+use glam::{Vec3, Vec4Swizzles, Vec4};
+use crate::graphics::{projection::Camera, triangle::{Material, Mesh, Vertex}};
 
 pub struct PointLightSource {
     pub pos: Vec3,
@@ -18,17 +18,17 @@ impl PointLightSource {
         }
     }
 
-    pub fn reflect(self, triangle: Triangle, cam: Camera) -> Vec3 {
+    /// gouraud shade vertex
+    pub fn shade_vertex(self, vertex: Vertex, material: Material, normal: Vec4, cam: Camera) -> Vec3 {
         // uses triangle.a as ref for most things, assume all 3 are equivalent
+        let kd: Vec3 = vertex.color;
+        let ks: Vec3 = material.ks;
+        let ka: Vec3 = material.ka;
+        let p: f32   = material.p;
 
-        let kd: Vec3 = triangle.a.rgb.to_vec3();
-        let ks: Vec3 = triangle.material.ks;
-        let ka: Vec3 = triangle.material.ka;
-        let p: f32 = triangle.material.p;
-
-        let n: Vec3 = triangle.normal.xyz();
-        let v: Vec3 = cam.e.xyz() - triangle.a.pos.xyz();
-        let l: Vec3 = self.pos - triangle.a.pos.xyz();
+        let n: Vec3 = normal.xyz();
+        let v: Vec3 = cam.e.xyz() - vertex.pos.xyz();
+        let l: Vec3 = self.pos - vertex.pos.xyz();
         let h_prenormalize: Vec3 = v + l;
         let r2: f32 = h_prenormalize.length_squared();
         let h = h_prenormalize.normalize();

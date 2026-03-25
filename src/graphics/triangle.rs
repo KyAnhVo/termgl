@@ -1,114 +1,80 @@
-use glam::{Mat4, Vec2, Vec3, Vec4, Vec4Swizzles};
+use std::ops::{Add, Div, Mul};
 
-/// represents material constants
+use glam::{Mat4, Vec2, Vec3, Vec3Swizzles, Vec4, Vec4Swizzles};
+
 #[derive(Clone, Copy)]
 pub struct Material {
-    pub ks: Vec3,    // specular coefficient
-    pub ka: Vec3,    // ambient coefficient
-    pub p:  f32,     // shinniness exponent
+    pub ks: Vec3,
+    pub ka: Vec3,
+    pub p: f32,
 }
 
-impl Material {
-    pub fn new(ks: Vec3, ka: Vec3, p: f32) -> Self { Self {ks, ka, p} }
-}
-
-/// Represents the triangle abc
-#[derive(Clone, Copy)]
-pub struct Triangle {
-    pub a: Vertex,
-    pub b: Vertex,
-    pub c: Vertex,
-    pub normal: Vec4,
-
-    pub material: Material,
-}
-
-impl Triangle {
-    pub fn new(a: Vertex, b: Vertex, c: Vertex, material: Material) -> Self {
-        let edge1: Vec3 = b.pos.xyz() - a.pos.xyz();
-        let edge2: Vec3 = c.pos.xyz() - a.pos.xyz();
-        let normal: Vec4 = edge1.cross(edge2).normalize().extend(0.0);
-        Self { a, b, c, normal, material }
-    }
-}
-
-/// represents the color rgb (no alpha here)
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub struct Color {
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
-}
-
-impl Color {
-    pub const WHITE: Color      = Color {   r: 255, g: 255, b: 255  };
-    pub const BLACK: Color      = Color {   r: 0,   g: 0,   b: 0    };
-    pub const SPACE_BLUE: Color = Color {   r: 10,  g: 15,  b: 40   };
-    pub const GREY: Color       = Color {   r: 128, g: 128, b: 128  };
-    pub const RED: Color        = Color {   r: 255, g: 0,   b: 0    };
-    pub const BLUE: Color       = Color {   r: 0,   g: 0,   b: 255  };
-    pub const GREEN: Color      = Color {   r: 0,   g: 255, b: 0    };
-
-    pub fn new(r: u8, g: u8, b: u8) -> Self { Self { r, g, b, } }
-
-    pub fn luminance(self, gamma: f32) -> f32 {
-        ((self.r as f32 * 0.2126
-         + self.g as f32 * 0.7152
-         + self.b as f32 * 0.0722) / 255.0).powf(gamma)
-    }
-
-    pub fn edge_detection(self, others: &[Self]) -> bool{
-        let others_count: i32 = others.len() as i32;
-        let mut r: i32 = self.r as i32 * others_count;
-        let mut g: i32 = self.g as i32 * others_count;
-        let mut b: i32 = self.b as i32 * others_count;
-        
-        let err_term: i32 = 2;
-
-        for other in others {
-            r -= other.r as i32;
-            g -= other.g as i32;
-            b -= other.b as i32;
-        }
-
-        r.abs() <= err_term || g.abs() <= err_term || b.abs() <= err_term
-    }
-
-    pub fn to_vec3(self)->Vec3 { Vec3::new(self.r as f32, self.g as f32, self.b as f32) }
-    pub fn from_vec3(v: Vec3)->Self {
-        Self::new(
-            v.x as u8,
-            v.y as u8,
-            v.z as u8
-        )
-    }
-}
-
-/// represents vertices in world space
-#[derive(Clone, Copy)]
+#[derive (Clone, Copy)]
 pub struct Vertex {
+    // position in world view (w = 1.0)
     pub pos: Vec4,
-    pub rgb: Color,
+
+    // color of vertex, color = [0,1]x[0,1]x[0,1]
+    pub color: Vec3,
+
+    // true if apply shading to this vertex
+    pub no_shade: bool,
 }
 
 impl Vertex {
+    pub fn new(pos: Vec4, color: Vec3, no_shade: bool) -> Self {
+        assert!(0.0 <= color.x && color.x <= 1.0);
+        assert!(0.0 <= color.y && color.y <= 1.0);
+        assert!(0.0 <= color.z && color.z <= 1.0);
+        assert!(1.0 - f32::EPSILON <= pos.z && pos.z <= 1.0 + f32::EPSILON);
+        
+        Self { pos, color, no_shade }
+    }
+}
 
+/// mesh, represented by an EBO and a VAO
+pub struct Mesh {
+    pub vao: Vec<Vertex>,
+    pub ebo: Vec<usize>,
+    pub vertex_orthogonals: Vec<Vec4>,
+    pub material: Material,
+}
 
-    pub fn new(x: f32, y: f32, z: f32, rgb: Color) -> Self {
-        Self {
-            pos: Vec4::new(x, y, z, 1.0f32),
-            rgb,
+impl Mesh {
+    pub fn new(material: Material) -> Self {
+        Self { vao: vec![], ebo: vec![], vertex_orthogonals: vec![], material }
+    }
+
+    pub fn add_vertex(&mut self, v: Vertex) {
+        self.vao.push(v);
+        self.vertex_orthogonals.push(Vec4::ZERO);
+    }
+
+    pub fn add_triangle(&mut self, a: usize, b: usize, c: usize) {
+        let v_count: usize = self.vao.len();
+        assert!(a < v_count && b < v_count && c < v_count, "triangle index out of bound");
+        self.ebo.push(a);
+        self.ebo.push(b);
+        self.ebo.push(c);
+        
+        let va: Vec4 = self.vao[a].pos;
+        let vb: Vec4 = self.vao[b].pos;
+        let vc: Vec4 = self.vao[c].pos;
+
+        let ab: Vec4 = vb - va;
+        let ac: Vec4 = vc - va;
+        let n:  Vec4 = ab.xyz().cross(ac.xyz()).extend(0.0);
+
+        self.vertex_orthogonals[a] += n;
+        self.vertex_orthogonals[b] += n;
+        self.vertex_orthogonals[c] += n;
+    }
+
+    pub fn finalize_normals(&mut self) {
+        for i in 0..self.vertex_orthogonals.len() {
+            if self.vertex_orthogonals[i] == Vec4::ZERO { continue; }   
+            self.vertex_orthogonals[i] = self.vertex_orthogonals[i].normalize();
         }
-    }
-
-    pub fn from_vec3(v: Vec3, rgb: Color) -> Self {
-        Self::new(v.x, v.y, v.z, rgb)
-    }
-
-    pub fn project(self, m_project: Mat4) -> RasterVertex {
-        // note: m_project is m_perspective * m_view
-        let pos: Vec4 = m_project * self.pos;
-        RasterVertex::new(pos, self.rgb)
     }
 }
 
@@ -116,140 +82,103 @@ impl Vertex {
 #[derive(Clone, Copy)]
 pub struct RasterVertex {
     pub pos: Vec3,
-    pub rgb: Color,
+    pub color: Vec3,
     pub inv_w: f32,
 }
 
 impl RasterVertex {
-    pub fn new(pos: Vec4, rgb: Color) -> Self {
+    pub fn new(pos: Vec4, color: Vec3) -> Self {
         Self {
             pos: pos.xyz() / pos.w,
-            rgb,
+            color,
             inv_w: 1.0 / pos.w,
         }
     }
 
     pub fn from_world_view(p: Vertex, m_cam: Mat4) -> Self {
-        Self::new(
-            m_cam * p.pos, 
-            p.rgb
-        )
-    }
-}
-
-/// Represents transformed triangle
-#[derive(Clone, Copy)]
-pub struct RasterTriangle {
-    pub a: RasterVertex,
-    pub b: RasterVertex,
-    pub c: RasterVertex,
-    
-    pub normal: Vec3,
-}
-
-impl RasterTriangle {
-    pub fn new(a: RasterVertex, b: RasterVertex, c: RasterVertex) -> Self {
-        let ab: Vec3 = b.pos - a.pos;
-        let ac: Vec3 = c.pos - a.pos;
-        let normal: Vec3 = ab.cross(ac).normalize();
-
-        Self { a, b, c, normal }
+        Self::new(m_cam * p.pos, p.color)
     }
 
-    pub fn from_world_view(tri: Triangle, m_cam: Mat4) -> Self {
-        Self::new(
-            RasterVertex::from_world_view(tri.a, m_cam),
-            RasterVertex::from_world_view(tri.b, m_cam),
-            RasterVertex::from_world_view(tri.c, m_cam),
-        )
+    pub fn is_back_facing(a: Self, b: Self, c: Self) -> bool {
+        let pa: Vec2 = a.pos.xy();
+        let pb: Vec2 = b.pos.xy();
+        let pc: Vec2 = c.pos.xy();
+
+        // lte because higher z => further from screen
+        (pb - pa).perp_dot(pc - pa) <= 0.0 
     }
 
-    pub fn is_inside(self, p: Vec2) -> bool {
-        let (a, b, c): (Vec2, Vec2, Vec2) = (self.a.pos.truncate(), self.b.pos.truncate(), self.c.pos.truncate());
-        let (ab, bc, ca): (Vec2, Vec2, Vec2) = (b - a, c - b, a - c);
-        let (ap, bp, cp): (Vec2, Vec2, Vec2) = (p - a, p - b, p - c);
-        let (s1, s2, s3): (bool, bool, bool) = (ab.perp_dot(ap) >= 0.0, bc.perp_dot(bp) >= 0.0, ca.perp_dot(cp) >= 0.0);
+    pub fn is_inside(a: Self, b: Self, c: Self, p: Vec2) -> bool {
+        let (pa, pb, pc): (Vec2, Vec2, Vec2) = (a.pos.xy(), b.pos.xy(), c.pos.xy());
+        let (ab, bc, ca): (Vec2, Vec2, Vec2) = (pb - pa, pc - pb, pc - pa);
+        let (ap, bp, cp): (Vec2, Vec2, Vec2) = (p - pa, p - pb, p - pc);
 
-        (s1 && s2 && s3) || !(s1 || s2 || s3)
+        let (apb, bpc, cpa): (f32, f32, f32) = (ap.perp_dot(ab), bp.perp_dot(bc), cp.perp_dot(ca));
+        (apb >= 0.0 && bpc >= 0.0 && cpa >= 0.0) || (apb <= 0.0 || bpc <= 0.0 || cpa <= 0.0)
     }
 
-    pub fn barycentric(self, p: Vec2) -> (f32, f32, f32) {
-        let (a, b, c): (Vec2, Vec2, Vec2) = (self.a.pos.truncate(), self.b.pos.truncate(), self.c.pos.truncate());
-        let total: f32 = (b - a).perp_dot(c - a);
-
+    pub fn barycentric_coordinate(
+        a: RasterVertex, 
+        b: RasterVertex, 
+        c: RasterVertex, 
+        p: Vec2
+    ) -> (f32, f32, f32) {
+        let pa: Vec2 = a.pos.xy();
+        let pb: Vec2 = b.pos.xy();
+        let pc: Vec2 = c.pos.xy();
+        
+        let area: f32 = (pb - pa).perp_dot(pc - pa);
+        
         (
-            (b - p).perp_dot(c - p) / total,
-            (c - p).perp_dot(a - p) / total,
-            (a - p).perp_dot(b - p) / total,
+            (pb - pa).perp_dot(p - pa) / area,
+            (pc - pb).perp_dot(p - pb) / area,
+            (pa - pc).perp_dot(p - pc) / area,
         )
     }
 
-    /// interpolate a value of p. If interpolate many values, prefer storing 
-    /// interpolate_inv_w then use interpolate_with_inv_w
-    pub fn interpolate(self, p: Vec2, a_val: f32, b_val: f32, c_val: f32) -> f32 {
-        let (alpha, beta, gamma): (f32, f32, f32) = self.barycentric(p);
+    pub fn interpolate_inv_w(
+        a: RasterVertex,
+        b: RasterVertex,
+        c: RasterVertex,
+        barycentric_coordinate: (f32, f32, f32)
+    ) -> f32 {
+        let (alpha, beta, gamma): (f32, f32, f32) = barycentric_coordinate;
 
-        let numerator: f32 =
-            alpha * a_val * self.a.inv_w +
-            beta  * b_val * self.b.inv_w +
-            gamma * c_val * self.c.inv_w;
-
-        let denominator: f32 = 
-            alpha * self.a.inv_w +
-            beta  * self.b.inv_w +
-            gamma * self.c.inv_w;
-
-        numerator / denominator
+        alpha * a.inv_w + beta * b.inv_w + gamma * c.inv_w
     }
 
-    /// get inverse w for the current point. Useful to not recalculate interpolated
-    /// inverse w when interpolate many values.
-    pub fn interpolate_inv_w(self, p: Vec2) -> f32 {
-        let (alpha, beta, gamma): (f32, f32, f32) = self.barycentric(p);
-        alpha * self.a.inv_w +
-        beta  * self.b.inv_w +
-        gamma * self.c.inv_w
+    pub fn interpolate<T>(
+        a: RasterVertex, b: RasterVertex, c: RasterVertex,
+        a_val: T, b_val: T, c_val: T,
+        barycentric_coordinate: (f32, f32, f32),
+        inv_w: f32
+    ) -> T 
+        where T: Clone + Copy + Add<Output = T> + Mul<f32, Output = T> + Div<f32, Output = T>
+    {
+        let (alpha, beta, gamma): (f32, f32, f32) = barycentric_coordinate;
+
+        (a_val * a.inv_w * alpha
+         + b_val * b.inv_w * beta
+         + c_val * c.inv_w * gamma) / inv_w
     }
 
-    /// Interpolate, use when you store you inverse w beforehand
-    /// useful when you want to interpolate a lot of values,
-    /// where you don't have to recalculate interpolated inverse w every time.
-    pub fn interpolate_with_inv_w(self, p: Vec2, p_inv_w: f32, a_val: f32, b_val: f32, c_val: f32) -> f32 {
-        let (alpha, beta, gamma): (f32, f32, f32) = self.barycentric(p) ;
-
-        let numerator: f32 =
-            alpha * a_val * self.a.inv_w +
-            beta  * b_val * self.b.inv_w +
-            gamma * c_val * self.c.inv_w;
-
-        numerator / p_inv_w
+    pub fn interpolate_z(
+        a: RasterVertex,
+        b: RasterVertex,
+        c: RasterVertex,
+        barycentric_coordinate: (f32, f32, f32),
+        inv_w: f32,
+    ) -> f32 {
+        Self::interpolate::<f32>(a, b, c, a.pos.z, b.pos.z, c.pos.z, barycentric_coordinate, inv_w)
     }
 
-    /// Interpolate depth of point inside triangle (no checking). Prefer
-    /// interpolate_depth_with_inv_w with interpolate_inv_w beforehand.
-    pub fn interpolate_depth(self, p: Vec2) -> f32 {
-        self.interpolate(p, self.a.pos.z, self.b.pos.z, self.c.pos.z)
-    }
-
-    /// Interpolate depth of point given a precalculated p_inv_w. This plus interpolate_inv_w is
-    /// equivalent to interpolate_depth but we allow storing of inv w for other interpolations.
-    pub fn interpolate_depth_with_inv_w(self, p: Vec2, p_inv_w: f32) -> f32 {
-        self.interpolate_with_inv_w(p, p_inv_w, self.a.pos.z, self.b.pos.z, self.c.pos.z)
-    }
-
-    pub fn interpolate_color(self, p: Vec2) -> Color {
-        Color::new(
-            self.interpolate(p, self.a.rgb.r as f32, self.b.rgb.r as f32, self.c.rgb.r as f32) as u8,
-            self.interpolate(p, self.a.rgb.g as f32, self.b.rgb.g as f32, self.c.rgb.g as f32) as u8,
-            self.interpolate(p, self.a.rgb.b as f32, self.b.rgb.b as f32, self.c.rgb.b as f32) as u8,
-        )
-    }
-
-    pub fn interpolate_color_with_inv_w(self, p: Vec2, p_inv_w: f32) -> Color {
-        Color::new(
-            self.interpolate_with_inv_w(p, p_inv_w, self.a.rgb.r as f32, self.b.rgb.r as f32, self.c.rgb.r as f32) as u8,
-            self.interpolate_with_inv_w(p, p_inv_w, self.a.rgb.g as f32, self.b.rgb.g as f32, self.c.rgb.g as f32) as u8,
-            self.interpolate_with_inv_w(p, p_inv_w, self.a.rgb.b as f32, self.b.rgb.b as f32, self.c.rgb.b as f32) as u8,
-        )
+    pub fn interpolate_color(
+        a: RasterVertex,
+        b: RasterVertex,
+        c: RasterVertex,
+        barycentric_coordinate: (f32, f32, f32),
+        inv_w: f32,
+    ) -> Vec3 {
+        Self::interpolate::<Vec3>(a, b, c, a.color, b.color, c.color, barycentric_coordinate, inv_w)
     }
 }

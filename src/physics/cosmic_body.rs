@@ -4,7 +4,7 @@ use std::f32::consts::PI;
 use rand::{RngExt};
 use glam::{Mat3, Mat4, Vec3, Vec4, Vec4Swizzles};
 
-use crate::graphics::{projection::Camera, triangle::{Color, Material, Triangle, Vertex}};
+use crate::graphics::{triangle::{Material, Vertex}};
 
 pub struct CosmicBody {
     pub original_pos: Vec3,
@@ -22,7 +22,7 @@ pub struct CosmicBody {
     pub rotational_normal: Vec3,
 
     /// color of the cosmic body, rgb
-    pub color: Color,
+    pub color: Vec3,
 
     /// radius to draw the cosmic body
     pub radius: f32,
@@ -62,7 +62,7 @@ impl CosmicBody {
         original_pos: Vec3, 
         days_per_orbit: u32,
         rotational_normal: Vec3, 
-        color: Color, 
+        color: Vec3, 
         radius: f32
     ) -> Self {
         let orbital_angular_velocity: f32 = if days_per_orbit == 0 { 
@@ -112,50 +112,25 @@ impl CosmicBody {
         self.pos = r * self.original_pos;
     }
 
-    pub fn to_triangles(&mut self, latitudes: usize, longtitudes: usize) -> Vec<Triangle> {
-        let mut triangles: Vec<Triangle> = vec![];
-        let mut vertices: Vec<Vec<Vertex>> = vec![vec![]; latitudes + 1];
-        let equator: Vec3 = Vec3::new(1.0, 0.0, 0.0);
+    pub fn to_triangles(&mut self, latitudes: usize, longtitudes: usize) -> Vec<(Vertex, Vertex, Vertex)> {
+        let mut prime_meridian: Vec<Vec3> = vec![];
+        let null_island: Vec3 = Vec3::X * self.radius;
 
-        // create vertices on the 0th longitude (prime meridian)
-        let mut prime_meridian_vertices: Vec<Vec3> = vec![];
-        for i in 0..=latitudes {
-            let current_rot: f32 = (PI / 2.0) - PI * (latitudes as f32) - i as f32;
-            let v: Vec3 = Self::rot_y(current_rot) * equator;
-            prime_meridian_vertices.push(v);
+        // div 2 mult 2 plus 1 to get the "floor even", then add 1 for center.
+        let latitudes: usize = latitudes / 2 * 2 + 1;
+
+        for latitude in 0..latitudes {
+            let theta: f32 = PI * (-0.5 + latitude as f32 / (latitudes - 1) as f32);
+            let rot: Mat3 = Self::rot_z(theta);
+            prime_meridian.push(rot * null_island);
         }
 
-        // For each longtitude, copy the latitudes in after rotation
-        for j in 0..=longtitudes {
-            let rot: Mat3 = Self::rot_z(PI * 2.0 / longtitudes as f32 * j as f32);
-            for i in 0..=latitudes {
-                let rotated: Vec3 = rot * prime_meridian_vertices[i];
-                vertices[i].push(Vertex::new(rotated.x, rotated.y, rotated.z, self.color));
-            }
+        let mut vertices: Vec<Vec<Vertex>> = vec![vec![]; latitudes / 2 * 2 + 1];
+        for longtitude in 0..=longtitudes {
+
         }
 
-        // Scale/move vertices to correct world pos
-        let transform: Mat4 = Mat4::from_cols(
-            Vec4::new(self.radius, 0.0, 0.0, 0.0,), 
-            Vec4::new(0.0, self.radius, 0.0, 0.0,), 
-            Vec4::new(0.0, 0.0, self.radius, 0.0,), 
-            self.pos.extend(1.0),
-        );
-        for i in 0..vertices.len() {
-            for j in 0..vertices[i].len() {
-                vertices[i][j].pos = transform * vertices[i][j].pos;
-            }
-        }
-
-        // construct triangles from thos vertices
-        for j in 0..longtitudes {
-            for i in 1..(vertices.len() - 1) {
-                triangles.push(Triangle::new(vertices[i][j + 1], vertices[i][j], vertices[i + 1][j + 1], Self::MAT));
-                triangles.push(Triangle::new(vertices[i][j], vertices[i][j + 1], vertices[i - 1][j], Self::MAT));
-            }
-        }
-
-        triangles
+        vec![]
     }
 }
 
@@ -163,7 +138,7 @@ pub struct CosmicSimulator {
     pub planets: Vec<CosmicBody>,
     pub sun: CosmicBody,
     pub days_passed: Vec<u32>,
-    pub orbit_triangles: Vec<Triangle>,
+    pub orbit_triangles: Vec<(Vertex, Vertex, Vertex)>,
 }
 
 impl CosmicSimulator {
@@ -200,21 +175,21 @@ impl CosmicSimulator {
     pub fn new()->Self {
         let mut planets: Vec<CosmicBody> = vec![
             // Mercury
-            CosmicBody::new(Vec3::X *  102.4429,    88, Vec3::Z, Color::new(165, 155, 154), 9.29 + 5.0),
+            CosmicBody::new(Vec3::X *  102.4429,    88, Vec3::Z, Vec3::new(165.0, 155.0, 154.0) / 255.0, 9.29 + 5.0),
             // Venus
-            CosmicBody::new(Vec3::X *  144.2665,   225, Vec3::Z, Color::new(227, 158,  28), 12.04 + 5.0),
+            CosmicBody::new(Vec3::X *  144.2665,   225, Vec3::Z, Vec3::new(227.0, 158.0,  28.0) / 255.0, 12.04 + 5.0),
             // Earth
-            CosmicBody::new(Vec3::X *  189.0198,   365, Vec3::Z, Color::new( 43, 101, 236), 12.22 + 5.0),
+            CosmicBody::new(Vec3::X *  189.0198,   365, Vec3::Z, Vec3::new( 43.0, 101.0, 236.0) / 255.0, 12.22 + 5.0),
             // Mars
-            CosmicBody::new(Vec3::X * 231.9361,   687, Vec3::Z, Color::new(193,  68,  14), 10.20 + 5.0),
+            CosmicBody::new(Vec3::X * 231.9361,   687, Vec3::Z,  Vec3::new(193.0,  68.0,  14.0) / 255.0, 10.20 + 5.0),
             // Jupiter
-            CosmicBody::new(Vec3::X * 286.8558,  4331, Vec3::Z, Color::new(216, 202, 157), 24.22 + 5.0),
+            CosmicBody::new(Vec3::X * 286.8558,  4331, Vec3::Z,  Vec3::new(216.0, 202.0, 157.0) / 255.0, 24.22 + 5.0),
             // Saturn
-            CosmicBody::new(Vec3::X * 354.5613, 10747, Vec3::Z, Color::new(191, 171, 119), 22.99 + 5.0),
+            CosmicBody::new(Vec3::X * 354.5613, 10747, Vec3::Z,  Vec3::new(191.0, 171.0, 119.0) / 255.0, 22.99 + 5.0),
             // Uranus
-            CosmicBody::new(Vec3::X * 416.1755, 30589, Vec3::Z, Color::new(209, 231, 231), 18.13 + 5.0),
+            CosmicBody::new(Vec3::X * 416.1755, 30589, Vec3::Z,  Vec3::new(209.0, 231.0, 231.0) / 255.0, 18.13 + 5.0),
             // Neptune
-            CosmicBody::new(Vec3::X * 472.7778, 59800, Vec3::Z, Color::new( 63, 115, 255), 17.97 + 5.0),
+            CosmicBody::new(Vec3::X * 472.7778, 59800, Vec3::Z,  Vec3::new( 63.0, 115.0, 255.0) / 255.0, 17.97 + 5.0),
         ];
         
         let mut days_passed: Vec<u32> = vec![0; 8];
@@ -227,52 +202,13 @@ impl CosmicSimulator {
             planets[i].orbit(days_passed_curr);
         }
 
-        let sun: CosmicBody = CosmicBody::new(Vec3::ZERO, 0, Vec3::ZERO, Color::new(255, 215, 0), 72.66 + 5.0);
+        let sun: CosmicBody = CosmicBody::new(Vec3::ZERO, 0, Vec3::ZERO, Vec3::new(255.0, 215.0, 0.0) / 255.0, 72.66 + 5.0);
 
-        let mut orbit_triangles: Vec<Triangle> = vec![];
+        let mut orbit_triangles: Vec<(Vertex, Vertex, Vertex)> = vec![];
         let orbit_line_counts: f32 = 1000.0;
-        let mut orbit_color: Color = Color::WHITE;
+        let orbit_color: ;
         let orbit_line_width: f32 = 3.0;
-        for planet in &mut planets.iter() {
-            // construct a ring with radius 5, then rotate it around the x axis.
-            let p1_0: Vec3 = planet.original_pos + Vec3::X * orbit_line_width / 2.0;
-            let p2_0: Vec3 = planet.original_pos - Vec3::X * orbit_line_width / 2.0;
 
-            orbit_color = planet.color;
-
-            for i in 0..=(orbit_line_counts as u32) {
-                let theta1: f32 = 2.0 * PI / orbit_line_counts * i as f32;
-                let theta2: f32 = 2.0 * PI / orbit_line_counts * (i + 1) as f32;
-                let p1_1: Vec3 = CosmicBody::rot_z(theta1) * p1_0;
-                let p2_1: Vec3 = CosmicBody::rot_z(theta1) * p2_0;
-                let p1_2: Vec3 = CosmicBody::rot_z(theta2) * p1_0;
-                let p2_2: Vec3 = CosmicBody::rot_z(theta2) * p2_0;
-                orbit_triangles.push(Triangle::new(
-                        Vertex::from_vec3(p1_1, orbit_color),
-                        Vertex::from_vec3(p1_2, orbit_color),
-                        Vertex::from_vec3(p2_2, orbit_color),
-                        CosmicBody::MAT,
-                ));
-                orbit_triangles.push(Triangle::new(
-                        Vertex::from_vec3(p1_1, orbit_color),
-                        Vertex::from_vec3(p2_2, orbit_color),
-                        Vertex::from_vec3(p1_2, orbit_color),
-                        CosmicBody::MAT
-                ));
-                orbit_triangles.push(Triangle::new(
-                        Vertex::from_vec3(p1_1, orbit_color),
-                        Vertex::from_vec3(p2_2, orbit_color),
-                        Vertex::from_vec3(p2_1, orbit_color),
-                        CosmicBody::MAT
-                ));
-                orbit_triangles.push(Triangle::new(
-                        Vertex::from_vec3(p1_1, orbit_color),
-                        Vertex::from_vec3(p2_1, orbit_color),
-                        Vertex::from_vec3(p2_2, orbit_color),
-                        CosmicBody::MAT
-                ));
-            }
-        }
 
         Self { planets, sun, days_passed, orbit_triangles }
     }
@@ -284,81 +220,4 @@ impl CosmicSimulator {
         }
     }
 
-    pub fn calculate_triangles(&mut self, camera: Camera) -> Vec<Triangle> {
-        let mut vec: Vec<Triangle> = vec![];
-
-        let l_ambient: Vec3 = Vec3::new(20.0, 20.0, 40.0) * 2.0;
-        for planet in &mut self.planets {
-            let mut planet_tri = planet.to_triangles(8, 16);
-
-            
-            for triangle in &mut planet_tri {
-                let pos: Vec3 = (
-                        triangle.a.pos.xyz()
-                        + triangle.b.pos.xyz()
-                        + triangle.c.pos.xyz()
-                ) / 3.0;
-                let n: Vec3 = -triangle.normal.xyz();
-                let l: Vec3 = (self.sun.pos - pos).normalize();
-                let v: Vec3 = (pos - camera.e.xyz()).normalize();
-                let h: Vec3 = (n + v).normalize();
-                let r2: f32 = (self.sun.pos - pos).dot(self.sun.pos - pos);
-                let p: f32  = 3.0;
-
-                let k_diffuse: Vec3 = (Color::to_vec3(triangle.a.rgb) + 
-                                Color::to_vec3(triangle.b.rgb) +
-                                Color::to_vec3(triangle.c.rgb)) / 3.0;
-                let k_specular: f32 = 000.0;
-                let intensity: f32 = 100000.0;
-
-
-                let l_diffuse: Vec3 = k_diffuse * (intensity / r2) * n.dot(l).max(0.0);
-                let l_specular: f32 = k_specular * (intensity / r2) * n.dot(h).max(0.0).powf(p);
-                
-                let final_rgb: Vec3 = l_ambient + l_diffuse + l_specular;
-
-                // if n.dot(l) < 0.0 { panic!("Finally!") }
-                let col: Color = Color::from_vec3(final_rgb);
-                
-                triangle.a.rgb = col;
-                triangle.b.rgb = col;
-                triangle.c.rgb = col;
-            }
-            
-
-            vec.append(&mut planet_tri);
-        }
-
-        // sun-specific logic
-        let mut sun_tri: Vec<Triangle> = self.sun.to_triangles(16, 16);
-        for triangle in &mut sun_tri {
-            let pos: Vec3 = (
-                triangle.a.pos.xyz()
-                + triangle.b.pos.xyz()
-                + triangle.c.pos.xyz()
-            ) / 3.0;
-            // Inside your loop, if planet == sun:
-            let n = triangle.normal.xyz();
-            let v = (pos - camera.e.xyz()).normalize();
-
-            // How much is the face looking at the camera?
-            let view_alignment = v.dot(n).max(0.0);
-
-            // Limb Darkening: Center is bright white-yellow, edges are deep orange
-            let core_glow = 1.2; // Over-brighten the center
-            let limb_factor = view_alignment.powf(0.5); // Soft falloff to the edges
-
-            let final_rgb = triangle.a.rgb.to_vec3() * core_glow * limb_factor;
-
-            triangle.a.rgb = Color::from_vec3(final_rgb);
-            triangle.b.rgb = Color::from_vec3(final_rgb);
-            triangle.c.rgb = Color::from_vec3(final_rgb);
-        }
-        vec.append(&mut sun_tri);
-
-        vec.extend(self.orbit_triangles.iter().cloned());
-
-        vec
-    }
-    
 }

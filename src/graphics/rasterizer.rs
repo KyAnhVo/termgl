@@ -1,13 +1,12 @@
 use glam::{Vec2, Vec3};
 
-use crate::graphics::triangle::{Color, RasterTriangle};
+use crate::graphics::triangle::{RasterVertex};
 
 pub struct Rasterizer {
     pub width: usize,
     pub height: usize,
-    pub frame_buff: Vec<Color>,
+    pub frame_buff: Vec<Vec3>,
     pub depth_buff: Vec<f32>,
-    pub triangles:  Vec<RasterTriangle>,
 }
 
 impl Rasterizer {
@@ -15,21 +14,20 @@ impl Rasterizer {
         Self {
             width,
             height,
-            frame_buff: vec![Color {r: 0, g: 0, b: 0}; width * height],
+            frame_buff: vec![Vec3::ZERO; width * height],
             depth_buff: vec![f32::INFINITY; width * height],
-            triangles:  vec![],
         }
     }
 
     pub fn resize(&mut self, width: usize, height: usize) {
         self.width = width;
         self.height = height;
-        self.frame_buff.resize(width * height, Color::new(0, 0, 0));
+        self.frame_buff.resize(width * height, Vec3::ZERO);
         self.depth_buff.resize(width * height, f32::INFINITY);
     }
 
     pub fn clear(&mut self) {
-        self.frame_buff.fill(Color::SPACE_BLUE);
+        self.frame_buff.fill(Vec3::ZERO);
         self.depth_buff.fill(f32::INFINITY);
     }
 
@@ -54,7 +52,7 @@ impl Rasterizer {
         Vec2::new(x, y)
     }
 
-    fn draw_pixel(&mut self, p: (usize,usize), z: f32, color: Color) {
+    fn draw_pixel(&mut self, p: (usize,usize), z: f32, color: Vec3) {
         let pixel_index: usize = p.1 * self.width + p.0;
         if self.depth_buff[pixel_index] > z {
             self.depth_buff[pixel_index] = z;
@@ -62,31 +60,13 @@ impl Rasterizer {
         }
     }
 
-    pub fn render_triangle(&mut self, &triangle: &RasterTriangle) {
+    pub fn render_triangle(&mut self, va: RasterVertex, vb: RasterVertex, vc: RasterVertex) {
+        if RasterVertex::is_back_facing(va, vb, vc) { return; }
         
-        if triangle.normal.z > 0.0 {
-            return;
-        }
-        
-        if triangle.a.pos.x.abs() > 1.0 || triangle.b.pos.x.abs() > 1.0 || triangle.c.pos.x.abs() > 1.0 {
-            return;
-        }
+        if va.pos.x.abs() > 1.0 || vb.pos.x.abs() > 1.0 || vc.pos.x.abs() > 1.0 { return; }
+        if va.pos.y.abs() > 1.0 || vb.pos.y.abs() > 1.0 || vc.pos.y.abs() > 1.0 { return; }
 
-        if triangle.a.pos.y.abs() > 1.0 || triangle.b.pos.y.abs() > 1.0 || triangle.c.pos.y.abs() > 1.0 {
-            return;
-        }
-
-        if triangle.a.pos.z < -1.0 || triangle.b.pos.z < -1.0 || triangle.c.pos.z < -1.0 {
-            //return;
-        }
-
-        // can I do clipping here?
-
-        let (a, b, c): (Vec3, Vec3, Vec3) = (
-            triangle.a.pos,
-            triangle.b.pos,
-            triangle.c.pos,
-        );
+        let (a, b, c): (Vec3, Vec3, Vec3) = ( va.pos, vb.pos, vc.pos, );
 
         let a_pix: (usize, usize) = self.ndc_to_screen(a);
         let b_pix: (usize, usize) = self.ndc_to_screen(b);
@@ -104,12 +84,13 @@ impl Rasterizer {
         for i in min_x..=max_x {
             for j in min_y..=max_y {
                 let p: Vec2         = self.screen_to_ndc((i, j));
-                if !triangle.is_inside(p) {
+                if !RasterVertex::is_inside(va, vb, vc, p) {
                     continue;
                 }
-                let p_inv_w: f32    = triangle.interpolate_inv_w(p);
-                let z: f32          = triangle.interpolate_depth_with_inv_w(p, p_inv_w);
-                let color: Color    = triangle.interpolate_color_with_inv_w(p, p_inv_w);
+                let barycentric_coordinate: (f32, f32, f32) = RasterVertex::barycentric_coordinate(va, vb, vc, p);
+                let p_inv_w: f32    = RasterVertex::interpolate_inv_w(va, vb, vc, barycentric_coordinate);
+                let z: f32          = RasterVertex::interpolate_z(va, vb, vc, barycentric_coordinate, p_inv_w);
+                let color: Vec3     = RasterVertex::interpolate_color(va, vb, vc, barycentric_coordinate, p_inv_w);
                 self.draw_pixel((i, j), z, color);
             }
         }
