@@ -4,7 +4,7 @@ use std::f32::consts::PI;
 use rand::{RngExt};
 use glam::{Mat3, Mat4, Vec3, Vec4, Vec4Swizzles};
 
-use crate::graphics::{triangle::{Material, Vertex}};
+use crate::graphics::{vertex::{Material, Vertex}};
 
 pub struct CosmicBody {
     pub original_pos: Vec3,
@@ -206,7 +206,7 @@ impl CosmicSimulator {
 
         let mut orbit_triangles: Vec<(Vertex, Vertex, Vertex)> = vec![];
         let orbit_line_counts: f32 = 1000.0;
-        let orbit_color: ;
+        let orbit_color: Vec3 = Vec3::new(1.0, 1.0, 1.0);
         let orbit_line_width: f32 = 3.0;
 
 

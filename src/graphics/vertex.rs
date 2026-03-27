@@ -36,13 +36,14 @@ impl Vertex {
 pub struct Mesh {
     pub vao: Vec<Vertex>,
     pub ebo: Vec<usize>,
+    pub projected_vao: Vec<Vertex>,
     pub vertex_orthogonals: Vec<Vec4>,
     pub material: Material,
 }
 
 impl Mesh {
     pub fn new(material: Material) -> Self {
-        Self { vao: vec![], ebo: vec![], vertex_orthogonals: vec![], material }
+        Self { vao: vec![], ebo: vec![], projected_vao: vec![], vertex_orthogonals: vec![], material }
     }
 
     pub fn add_vertex(&mut self, v: Vertex) {
@@ -110,11 +111,11 @@ impl RasterVertex {
 
     pub fn is_inside(a: Self, b: Self, c: Self, p: Vec2) -> bool {
         let (pa, pb, pc): (Vec2, Vec2, Vec2) = (a.pos.xy(), b.pos.xy(), c.pos.xy());
-        let (ab, bc, ca): (Vec2, Vec2, Vec2) = (pb - pa, pc - pb, pc - pa);
+        let (ab, bc, ca): (Vec2, Vec2, Vec2) = (pb - pa, pc - pb, pa - pc);
         let (ap, bp, cp): (Vec2, Vec2, Vec2) = (p - pa, p - pb, p - pc);
 
         let (apb, bpc, cpa): (f32, f32, f32) = (ap.perp_dot(ab), bp.perp_dot(bc), cp.perp_dot(ca));
-        (apb >= 0.0 && bpc >= 0.0 && cpa >= 0.0) || (apb <= 0.0 || bpc <= 0.0 || cpa <= 0.0)
+        (apb >= 0.0 && bpc >= 0.0 && cpa >= 0.0) || (apb <= 0.0 && bpc <= 0.0 && cpa <= 0.0)
     }
 
     pub fn barycentric_coordinate(
@@ -147,14 +148,15 @@ impl RasterVertex {
         alpha * a.inv_w + beta * b.inv_w + gamma * c.inv_w
     }
 
-    pub fn interpolate<T>(
-        a: RasterVertex, b: RasterVertex, c: RasterVertex,
+    fn interpolate<T>(
+        triangle: (RasterVertex, RasterVertex, RasterVertex),
         a_val: T, b_val: T, c_val: T,
         barycentric_coordinate: (f32, f32, f32),
         inv_w: f32
     ) -> T 
         where T: Clone + Copy + Add<Output = T> + Mul<f32, Output = T> + Div<f32, Output = T>
     {
+        let (a, b, c): (RasterVertex, RasterVertex, RasterVertex) = triangle;
         let (alpha, beta, gamma): (f32, f32, f32) = barycentric_coordinate;
 
         (a_val * a.inv_w * alpha
@@ -163,22 +165,20 @@ impl RasterVertex {
     }
 
     pub fn interpolate_z(
-        a: RasterVertex,
-        b: RasterVertex,
-        c: RasterVertex,
+        triangle: (RasterVertex, RasterVertex, RasterVertex),
         barycentric_coordinate: (f32, f32, f32),
         inv_w: f32,
     ) -> f32 {
-        Self::interpolate::<f32>(a, b, c, a.pos.z, b.pos.z, c.pos.z, barycentric_coordinate, inv_w)
+        let (a, b, c): (RasterVertex, RasterVertex, RasterVertex) = triangle;
+        Self::interpolate::<f32>(triangle, a.pos.z, b.pos.z, c.pos.z, barycentric_coordinate, inv_w)
     }
 
     pub fn interpolate_color(
-        a: RasterVertex,
-        b: RasterVertex,
-        c: RasterVertex,
+        triangle: (RasterVertex, RasterVertex, RasterVertex),
         barycentric_coordinate: (f32, f32, f32),
         inv_w: f32,
     ) -> Vec3 {
-        Self::interpolate::<Vec3>(a, b, c, a.color, b.color, c.color, barycentric_coordinate, inv_w)
+        let (a, b, c): (RasterVertex, RasterVertex, RasterVertex) = triangle;
+        Self::interpolate::<Vec3>(triangle, a.color, b.color, c.color, barycentric_coordinate, inv_w)
     }
 }

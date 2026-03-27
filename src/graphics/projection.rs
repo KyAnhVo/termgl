@@ -43,7 +43,7 @@ impl Camera {
         let mut up3: Vec3   = up.xyz().normalize();
         let gaze3: Vec3     = gaze.xyz().normalize();
         let right3: Vec3    = gaze3.cross(up3);
-        up3 = right3.cross(gaze3).normalize();
+        up3                 = right3.cross(gaze3).normalize();
 
         Self {
             t: up3.extend(0.0),

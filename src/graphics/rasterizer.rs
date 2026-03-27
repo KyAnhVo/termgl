@@ -2,32 +2,35 @@ use glam::{Vec2, Vec3};
 
 use crate::graphics::triangle::{RasterVertex};
 
+
 pub struct Rasterizer {
     pub width: usize,
     pub height: usize,
     pub frame_buff: Vec<Vec3>,
     pub depth_buff: Vec<f32>,
+    pub background_color: Vec3,
 }
 
 impl Rasterizer {
-    pub fn new(width: usize, height: usize) -> Self {
+    pub fn new(width: usize, height: usize, background_color: Vec3) -> Self {
         Self {
             width,
             height,
-            frame_buff: vec![Vec3::ZERO; width * height],
+            frame_buff: vec![background_color; width * height],
             depth_buff: vec![f32::INFINITY; width * height],
+            background_color,
         }
     }
 
     pub fn resize(&mut self, width: usize, height: usize) {
         self.width = width;
         self.height = height;
-        self.frame_buff.resize(width * height, Vec3::ZERO);
+        self.frame_buff.resize(width * height, self.background_color);
         self.depth_buff.resize(width * height, f32::INFINITY);
     }
 
     pub fn clear(&mut self) {
-        self.frame_buff.fill(Vec3::ZERO);
+        self.frame_buff.fill(self.background_color);
         self.depth_buff.fill(f32::INFINITY);
     }
 
@@ -61,7 +64,7 @@ impl Rasterizer {
     }
 
     pub fn render_triangle(&mut self, va: RasterVertex, vb: RasterVertex, vc: RasterVertex) {
-        if RasterVertex::is_back_facing(va, vb, vc) { return; }
+        // if RasterVertex::is_back_facing(va, vb, vc) { return; }
         
         if va.pos.x.abs() > 1.0 || vb.pos.x.abs() > 1.0 || vc.pos.x.abs() > 1.0 { return; }
         if va.pos.y.abs() > 1.0 || vb.pos.y.abs() > 1.0 || vc.pos.y.abs() > 1.0 { return; }
@@ -72,6 +75,10 @@ impl Rasterizer {
         let b_pix: (usize, usize) = self.ndc_to_screen(b);
         let c_pix: (usize, usize) = self.ndc_to_screen(c);
 
+        std::println!("width: {}, height: {}", self.width, self.height);
+        std::println!("A: ({}, {}), B: ({}, {}), C: ({}, {})", 
+            a_pix.0, a_pix.1, b_pix.0, b_pix.1, c_pix.0, c_pix.1);
+
         let vertices_x: Vec<usize> = vec![a_pix.0, b_pix.0, c_pix.0];
         let vertices_y: Vec<usize> = vec![a_pix.1, b_pix.1, c_pix.1];
 
@@ -81,16 +88,18 @@ impl Rasterizer {
         let min_y: usize = vertices_y[0].min(vertices_y[1]).min(vertices_y[2]);
         let max_y: usize = vertices_y[0].max(vertices_y[1]).max(vertices_y[2]);
 
+        std::println!("X: [{}, {}], Y: [{}, {}]", min_x, max_x, min_y, max_y);
+
         for i in min_x..=max_x {
             for j in min_y..=max_y {
-                let p: Vec2         = self.screen_to_ndc((i, j));
+                let p: Vec2 = self.screen_to_ndc((i, j));
                 if !RasterVertex::is_inside(va, vb, vc, p) {
                     continue;
                 }
                 let barycentric_coordinate: (f32, f32, f32) = RasterVertex::barycentric_coordinate(va, vb, vc, p);
                 let p_inv_w: f32    = RasterVertex::interpolate_inv_w(va, vb, vc, barycentric_coordinate);
-                let z: f32          = RasterVertex::interpolate_z(va, vb, vc, barycentric_coordinate, p_inv_w);
-                let color: Vec3     = RasterVertex::interpolate_color(va, vb, vc, barycentric_coordinate, p_inv_w);
+                let z: f32          = RasterVertex::interpolate_z((va, vb, vc), barycentric_coordinate, p_inv_w);
+                let color: Vec3     = RasterVertex::interpolate_color((va, vb, vc), barycentric_coordinate, p_inv_w);
                 self.draw_pixel((i, j), z, color);
             }
         }
