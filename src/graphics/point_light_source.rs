@@ -110,7 +110,7 @@ impl PointLightSource {
 
     /// Shade a vertex in the light source's wrapper mesh.
     /// This uses only the normal and the camera's position.
-    pub fn shade_light_vertex(
+    pub fn phong_shade_light_source(
         self,
         pos: Vec3,
         normal: Vec4,
