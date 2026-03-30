@@ -9,8 +9,9 @@ use crate::graphics::{
 };
 use crossterm::terminal;
 use glam::{Mat3, Mat4, Vec3, Vec4, Vec4Swizzles};
+use std::io::{Write, stdout};
 
-struct Pipeline3D {
+pub struct Pipeline3D {
     /// screen width
     pub width: usize,
     /// screen height
@@ -81,5 +82,6 @@ impl Pipeline3D {
     /// Print the buffer into the screen
     pub fn print(&mut self) {
         self.printer.print(&self.rasterizer.frame_buff);
+        stdout().write_all(&self.printer.buff).unwrap();
     }
 }

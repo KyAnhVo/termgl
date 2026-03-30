@@ -113,4 +113,60 @@ impl Mesh {
     pub fn translate(&mut self, movement: Vec3) {
         self.origin += movement;
     }
+
+    // Utility functions
+
+    /// Make mesh a sphere with radius centered around the mesh's origin
+    pub fn create_sphere(&mut self, radius: f32, color: Vec3) {
+        let sectors = 20; // Longitude
+        let stacks = 20; // Latitude
+
+        self.vao.clear();
+        self.ebo.clear();
+        self.vertex_orthogonals.clear();
+
+        let sector_step = 2.0 * std::f32::consts::PI / sectors as f32;
+        let stack_step = std::f32::consts::PI / stacks as f32;
+
+        for i in 0..=stacks {
+            let stack_angle = std::f32::consts::PI / 2.0 - i as f32 * stack_step;
+            let xy = radius * stack_angle.cos();
+            let z = radius * stack_angle.sin();
+
+            for j in 0..=sectors {
+                let sector_angle = j as f32 * sector_step;
+
+                let x = xy * sector_angle.cos();
+                let y = xy * sector_angle.sin();
+
+                let pos = Vec3::new(x, y, z);
+
+                self.vao.push(Vertex::new(pos, Vec3::ONE, self.no_shade));
+
+                self.vertex_orthogonals.push(pos.extend(0.0).normalize());
+            }
+        }
+
+        // Generate EBO (Indices)
+        for i in 0..stacks {
+            let mut k1 = i * (sectors + 1);
+            let mut k2 = k1 + sectors + 1;
+
+            for _ in 0..sectors {
+                if i != 0 {
+                    self.ebo.push(k1);
+                    self.ebo.push(k2);
+                    self.ebo.push(k1 + 1);
+                }
+
+                if i != (stacks - 1) {
+                    self.ebo.push(k1 + 1);
+                    self.ebo.push(k2);
+                    self.ebo.push(k2 + 1);
+                }
+                k1 += 1;
+                k2 += 1;
+            }
+        }
+    }
 }

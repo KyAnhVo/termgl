@@ -1,3 +1,4 @@
+use crossterm::terminal;
 use glam::{Mat4, Vec3, Vec4, Vec4Swizzles};
 
 #[derive(Clone, Copy)]
@@ -22,7 +23,7 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(up: Vec4, gaze: Vec4, pos: Vec4, fov: f32, aspect_ratio: f32) -> Self {
+    pub fn new(up: Vec4, gaze: Vec4, pos: Vec4, fov: f32) -> Self {
         if up.w != 0.0 || gaze.w != 0.0 {
             panic!(
                 "up ({}, {}, {}, {}) and gaze({}, {}, {}, {}) are direction, not position",
@@ -40,6 +41,10 @@ impl Camera {
         let gaze3: Vec3 = gaze.xyz().normalize();
         let right3: Vec3 = gaze3.cross(up3);
         up3 = right3.cross(gaze3).normalize();
+
+        let (width_u16, height_u16) = terminal::size().unwrap();
+        let (width, height) = (width_u16 as usize, height_u16 as usize * 2);
+        let aspect_ratio: f32 = width as f32 / height as f32;
 
         Self {
             t: up3.extend(0.0),

@@ -118,7 +118,7 @@ impl RasterVertex {
         let (a, b, c): (RasterVertex, RasterVertex, RasterVertex) = triangle;
         let (alpha, beta, gamma): (f32, f32, f32) = barycentric_coordinate;
 
-        (a_val * a.inv_w * alpha + b_val * b.inv_w * beta + c_val * c.inv_w * gamma) / inv_w
+        (a_val / a.inv_w * alpha + b_val / b.inv_w * beta + c_val / c.inv_w * gamma) / inv_w
     }
 
     pub fn interpolate_z(
