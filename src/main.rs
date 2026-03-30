@@ -41,6 +41,11 @@ fn test_planets(width: usize, height: usize, day_count_incremental: u32) {
     let projection: Mat4 = cam.m_perspective(0.01, 500.0) * cam.m_view();
 
     loop {
+        let (width_u16, height_u16) = terminal::size().unwrap();
+        let (width, height) = (width_u16 as usize, height_u16 as usize * 2);
+
+        rasterizer.resize(width, height);
+
         cosmic_simulator.orbit(day_count_incremental);
         let triangles: Vec<Triangle> = cosmic_simulator.calculate_triangles(cam);
         let mut raster_triangles: Vec<RasterTriangle> = vec![];
