@@ -73,11 +73,11 @@ impl PointLightSource {
         let p: f32 = material.p;
 
         let n: Vec3 = normal.xyz();
-        let v: Vec3 = cam.e.xyz() - vertex.pos.xyz();
-        let l: Vec3 = self.pos - vertex.pos.xyz();
-        let h_prenormalize: Vec3 = v + l;
-        let r2: f32 = h_prenormalize.length_squared();
-        let h = h_prenormalize.normalize();
+        let v: Vec3 = (cam.e.xyz() - vertex.pos.xyz()).normalize();
+        let l_unnorm: Vec3 = self.pos - vertex.pos.xyz();
+        let r2: f32 = l_unnorm.length_squared();
+        let l: Vec3 = l_unnorm.normalize();
+        let h = (v + l).normalize();
 
         let ia: Vec3 = self.ambient_intensity;
         let id: Vec3 = self.diffuse_intensity;
@@ -86,7 +86,12 @@ impl PointLightSource {
         let diffuse_term: Vec3 = kd * (id / r2) * (n.dot(l)).max(0.0);
         let specular_term: Vec3 = ks * (is / r2) * (n.dot(h)).max(0.0).powf(p);
 
-        ambient_term + diffuse_term + specular_term
+        let color: Vec3 = ambient_term + diffuse_term + specular_term;
+        Vec3::new(
+            color.x.clamp(0.0, 1.0),
+            color.y.clamp(0.0, 1.0),
+            color.z.clamp(0.0, 1.0),
+        )
     }
 
     /// Shades a point given position, normal, material, and original color
@@ -98,17 +103,18 @@ impl PointLightSource {
         color: Vec3,
         cam: Camera,
     ) -> Vec3 {
+
         let kd: Vec3 = color;
         let ks: Vec3 = material.ks;
         let ka: Vec3 = material.ka;
         let p: f32 = material.p;
 
         let n: Vec3 = normal.xyz();
-        let v: Vec3 = cam.e.xyz() - pos;
-        let l: Vec3 = self.pos - pos;
-        let h_prenormalize: Vec3 = v + l;
-        let r2: f32 = h_prenormalize.length_squared();
-        let h = h_prenormalize.normalize();
+        let v: Vec3 = (cam.e.xyz() - pos).normalize();
+        let l_unnorm: Vec3 = self.pos - pos;
+        let l: Vec3 = l_unnorm.normalize();
+        let r2: f32 = l_unnorm.length_squared();
+        let h = (v + l).normalize();
 
         let ia: Vec3 = self.ambient_intensity;
         let id: Vec3 = self.diffuse_intensity;
@@ -118,33 +124,11 @@ impl PointLightSource {
         let diffuse_term: Vec3 = kd * (id / r2) * (n.dot(l)).max(0.0);
         let specular_term: Vec3 = ks * (is / r2) * (n.dot(h)).max(0.0).powf(p);
 
-        ambient_term + diffuse_term + specular_term
-    }
-
-    /// Shade the light source vertex (Gouraud) itself using either Lambertian or
-    /// Lambertian cosine law
-    pub fn shade_self_vertex(&self, vertex_index: usize, camera: &Camera) -> Option<Vec3> {
-        match &self.wrapper_mesh {
-            Some(mesh) => Some(self.shade_self(
-                mesh.vao[vertex_index].pos,
-                mesh.vertex_orthogonals[vertex_index],
-                camera,
-            )),
-            None => {
-                return None;
-            }
-        }
-    }
-
-    /// Shade the light source
-    pub fn shade_self(&self, pos: Vec4, normal: Vec4, camera: &Camera) -> Vec3 {
-        match self.shading_mode {
-            LightSourceShadingMode::Lambertian => self.shining_constant,
-            LightSourceShadingMode::LambertianCosineLaw => {
-                let n: Vec3 = normal.xyz();
-                let v: Vec3 = camera.e.xyz() - pos.xyz();
-                self.shining_constant * (n.dot(v).max(0.0))
-            }
-        }
+        let color: Vec3 = ambient_term + diffuse_term + specular_term;
+        Vec3::new(
+            color.x.clamp(0.0, 1.0),
+            color.y.clamp(0.0, 1.0),
+            color.z.clamp(0.0, 1.0),
+        )
     }
 }

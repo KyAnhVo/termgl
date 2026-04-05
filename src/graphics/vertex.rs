@@ -62,7 +62,7 @@ impl RasterVertex {
         let pc: Vec2 = c.pos.xy();
 
         // gte because higher z => further from screen
-        (pb - pa).perp_dot(pc - pa) >= 0.0
+        (pb - pa).perp_dot(pc - pa) <= 0.0
     }
 
     pub fn is_inside(a: Self, b: Self, c: Self, p: Vec2) -> bool {

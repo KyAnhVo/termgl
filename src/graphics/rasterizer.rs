@@ -74,10 +74,9 @@ impl Rasterizer {
         shader: &Shader,
         camera: Camera,
         is_phong: bool,
-        is_debug: bool,
     ) {
         for i in 0..(mesh.ebo.len() / 3) {
-            self.rasterize_triangle(mesh, 3 * i, shader, camera, is_phong, is_debug);
+            self.rasterize_triangle(mesh, 3 * i, shader, camera, is_phong);
         }
     }
 
@@ -88,24 +87,28 @@ impl Rasterizer {
         shader: &Shader,
         camera: Camera,
         is_phong: bool,
-        is_debug: bool,
     ) {
         let (i1, i2, i3): (usize, usize, usize) = (
             mesh.ebo[start_ind],
             mesh.ebo[start_ind + 1],
             mesh.ebo[start_ind + 2],
         );
-        let (va, vb, vc): (Vertex, Vertex, Vertex) = (mesh.vao[i1], mesh.vao[i2], mesh.vao[i3]);
+        let (va, vb, vc): (Vertex, Vertex, Vertex) = (
+            mesh.vao_world_space[i1],
+            mesh.vao_world_space[i2],
+            mesh.vao_world_space[i3],
+        );
         let (ra, rb, rc): (RasterVertex, RasterVertex, RasterVertex) = (
             mesh.projected_vao[i1],
             mesh.projected_vao[i2],
             mesh.projected_vao[i3],
         );
         let (na, nb, nc): (Vec4, Vec4, Vec4) = (
-            mesh.vertex_orthogonals[i1],
-            mesh.vertex_orthogonals[i2],
-            mesh.vertex_orthogonals[i3],
+            mesh.v_orthogonals_world_space[i1],
+            mesh.v_orthogonals_world_space[i2],
+            mesh.v_orthogonals_world_space[i3],
         );
+
 
         if RasterVertex::is_back_facing(ra, rb, rc) {
             return;
@@ -174,23 +177,6 @@ impl Rasterizer {
                     shader.shade_point_phong(pos, n, mesh.material, kd, camera)
                 };
 
-                if is_debug {
-                    println!(
-                        "alpha: {}, beta: {}, gamma: {}",
-                        barycentric_coordinate.0,
-                        barycentric_coordinate.1,
-                        barycentric_coordinate.2
-                    );
-                    println!(
-                        "a.invw: {}, bb.invw: {}, c.invw: {} -> new.invw: {}",
-                        ra.inv_w, rb.inv_w, rc.inv_w, p_inv_w
-                    );
-                    println!(
-                        "ra {}, rb {}, rc {} -> new {}",
-                        ra.color, rb.color, rc.color, color
-                    );
-                    println!();
-                }
                 self.draw_pixel((i, j), z, color);
             }
         }

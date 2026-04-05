@@ -58,7 +58,10 @@ impl Pipeline3D {
     }
 
     /// Render the meshes into rasterizer's buffer
-    pub fn render_mesh(&mut self, mesh: &mut Mesh, shade_mode: ShadingMode, is_debug: bool) {
+    pub fn render_mesh(&mut self, mesh: &mut Mesh, shade_mode: ShadingMode) {
+        // finalize mesh normals and vertices (to world space)
+        mesh.finalize_normals();
+
         // transform to ndc-space
         let m_obj_to_ndc: Mat4 = self.camera.m_perspective(0.1, 10000000.0)
             * self.camera.m_view()
@@ -66,11 +69,11 @@ impl Pipeline3D {
         mesh.projected_vao.clear();
         for v in &mesh.vao {
             mesh.projected_vao
-                .push(RasterVertex::from_world_view(v.clone(), m_obj_to_ndc));
+                .push(RasterVertex::from_world_view(*v, m_obj_to_ndc));
         }
 
         // shade vertices for Gouraud shading
-        if shade_mode == ShadingMode::Gouraud {
+        if shade_mode == ShadingMode::Gouraud || shade_mode == ShadingMode::Flat {
             self.shader.shade_mesh_gouraud(mesh, self.camera);
             println!("enter gouraud");
         } else {
@@ -79,13 +82,13 @@ impl Pipeline3D {
 
         let is_phong: bool = (shade_mode == ShadingMode::Phong) && !mesh.no_shade;
         self.rasterizer
-            .rasterize_mesh(mesh, &self.shader, self.camera, is_phong, is_debug);
+            .rasterize_mesh(mesh, &self.shader, self.camera, is_phong,);
     }
 
     /// Print the buffer into the screen
     pub fn print(&mut self) {
         self.printer.print(&self.rasterizer.frame_buff);
-        stdout().flush();
+        stdout().flush().unwrap();
         stdout().write_all(&self.printer.buff).unwrap();
     }
 }

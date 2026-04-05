@@ -61,8 +61,12 @@ impl Shader {
             return;
         }
         for v in 0..mesh.vao.len() {
-            mesh.projected_vao[v].color =
-                self.shade_vertex(mesh.vao[v], mesh.vertex_orthogonals[v], mesh.material, cam);
+            mesh.projected_vao[v].color = self.shade_vertex(
+                mesh.vao_world_space[v],
+                mesh.v_orthogonals_world_space[v],
+                mesh.material,
+                cam,
+            );
         }
     }
 }

@@ -5,6 +5,8 @@ pub enum ShadingMode {
     Gouraud,
     /// interpolate normal into pixel, calculate pixel color
     Phong,
+    /// use the first vertex's (or the average) color
+    Flat,
 }
 
 /// shading modes for light source

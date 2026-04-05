@@ -8,7 +8,7 @@ use crate::graphics::point_light_source::PointLightSource;
 use crate::graphics::printer::{Printer, PrinterType};
 use crate::graphics::projection::Camera;
 use crate::graphics::rasterizer::Rasterizer;
-use crate::graphics::vertex::{Material, RasterVertex, Vertex};
+use crate::graphics::vertex::{Material, RasterVertex};
 use std::f32::consts::PI;
 use std::io::{Write, stdout};
 
@@ -16,11 +16,12 @@ use std::thread;
 use std::time::Duration;
 
 use crossterm::terminal;
-use glam::{Mat3, Vec3, Vec4};
+use glam::{Mat3, Mat4, Vec3, Vec4};
 
 fn main() {
     let (width_u16, height_u16) = terminal::size().unwrap();
     let (width, height) = (width_u16 as usize, height_u16 as usize * 2);
+    // test_rast(width, height);
     test_pipeline();
 }
 
@@ -33,7 +34,6 @@ fn test_rast(w: usize, h: usize) {
         RasterVertex::new(Vec4::new(0.0, -1.0, 0.0, 1.0), Vec3::new(0.0, 0.0, 1.0));
 
     let mut rast: Rasterizer = Rasterizer::new(w, h, Vec3::new(0.0, 0.1, 0.3));
-    rast.clear();
 
     let mut printer: Printer = Printer::new(PrinterType::Color, w, h);
     printer.print(&rast.frame_buff);
@@ -45,26 +45,30 @@ fn test_pipeline() {
         Vec3::new(0.0, 0.0, 0.1),
         PrinterType::Color,
         Camera::new(
-            Vec3::Y.extend(0.0),
-            Vec3::Z.extend(0.0) * 1.0,
-            (Vec3::Z * -10.0).extend(1.0),
+            Vec3::X.extend(0.0),
+            Vec3::Y.extend(0.0) * 1.0,
+            (Vec3::Y * -30.0).extend(1.0),
             PI / 4.0,
         ),
     );
+
+    let intensity: f32 = 5.0;
     pipeline
         .shader
         .add_point_light_source(PointLightSource::new(
             Vec3::ZERO,
             None,
-            Vec3::new(1.0, 1.0, 1.0) * 0.5,
-            Vec3::new(0.8, 0.8, 0.8) * 0.5,
-            Vec3::new(0.1, 0.1, 0.1) * 0.5,
+            Vec3::ONE * intensity * 10.0,
+            Vec3::ONE * 0.2 * intensity,
+            Vec3::ONE * 0.1 * intensity,
             Vec3::ZERO,
             LightSourceShadingMode::Lambertian,
         ));
 
+    let original_origin: Vec3 = Vec3::Z * 10.0;
+    let mut theta: f32 = 0.0;
     let mut mesh: Mesh = Mesh::new(
-        Vec3::Z * 3.0,
+        Vec3::Z * 10.0,
         Mat3::IDENTITY,
         Material {
             ks: Vec3 {
@@ -82,21 +86,16 @@ fn test_pipeline() {
         false,
     );
 
-    mesh.create_sphere(1.0, Vec3::new(1.0, 0.76, 0.33));
+    mesh.create_sphere(2.0, Vec3::new(1.0, 0.76, 0.33));
     mesh.finalize_normals();
 
-    // test settings
-    let is_debug: bool = false;
-
     loop {
+        mesh.move_origin(Mat4::from_mat3(Mat3::from_rotation_y(PI / 100.0)));
         pipeline.resize();
         pipeline.rasterizer.clear();
-        pipeline.render_mesh(&mut mesh, ShadingMode::Gouraud, is_debug);
+        pipeline.render_mesh(&mut mesh, ShadingMode::Phong);
 
-        if is_debug {
-            thread::sleep(Duration::from_secs(2));
-        }
         pipeline.print();
-        thread::sleep(Duration::from_millis(30));
+        thread::sleep(Duration::from_millis(10));
     }
 }
