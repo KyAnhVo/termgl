@@ -1,6 +1,24 @@
 use crate::graphics::vertex::{Material, RasterVertex, Vertex};
 use glam::{Mat3, Mat4, Vec3, Vec4, Vec4Swizzles};
 
+/// a 3-tuple of indices of vertex, normal, and uv
+#[derive(Clone, Copy)]
+pub struct MeshVertex {
+    pub vertex_ind: usize,
+    pub normal_ind: usize,
+    pub uv_ind: usize,
+}
+
+impl MeshVertex {
+    pub fn new(vertex_ind: usize, normal_ind: usize, uv_ind: usize) -> Self {
+        Self {
+            vertex_ind,
+            normal_ind,
+            uv_ind,
+        }
+    }
+}
+
 /// An object to be rendered, represented by an EBO and a VAO
 #[derive(Clone)]
 pub struct Mesh {
