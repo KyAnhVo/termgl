@@ -40,70 +40,45 @@ fn test_rast(w: usize, h: usize) {
     stdout().write_all(&printer.buff).unwrap();
 }
 
-fn test_pipeline() {
-    let mut pipeline: Pipeline3D = Pipeline3D::new(
-        Vec3::new(0.0, 0.0, 0.1),
-        PrinterType::Color,
-        Camera::new(
-            Vec3::X.extend(0.0),
-            Vec3::Y.extend(0.0) * 1.0,
-            (Vec3::Y * -30.0).extend(1.0),
-            PI / 4.0,
-        ),
-        ShadingMode::Phong,
-    );
+fn test_planets(width: usize, height: usize, day_count_incremental: u32) {
+    let print_type: PrinterType = if args().collect::<Vec<String>>()[1] == "-a" {
+        PrinterType::Ascii
+    } else {
+        PrinterType::Color
+    };
+    let mut rasterizer: Rasterizer = Rasterizer::new(width, height);
+    let mut cosmic_simulator = CosmicSimulator::new();
 
-    let intensity: f32 = 5.0;
-    pipeline
-        .shader
-        .add_point_light_source(PointLightSource::new(
-            Vec3::ZERO,
-            None,
-            Vec3::ONE * intensity * 10.0,
-            Vec3::ONE * 0.2 * intensity,
-            Vec3::ONE * 0.1 * intensity,
-            Vec3::ZERO,
-            LightSourceShadingMode::Lambertian,
-        ));
-
-    let mut mesh: Mesh = Mesh::new(
-        Vec3::Z * 10.0,
-        Mat3::IDENTITY,
-        Material {
-            ks: Vec3 {
-                x: 1.0,
-                y: 0.86,
-                z: 0.57,
-            },
-            ka: Vec3 {
-                x: 0.25,
-                y: 0.19,
-                z: 0.08,
-            },
-            p: 50.0,
-        },
-        false,
-    );
-    mesh.create_sphere(20, 20, 2.0, Vec3::new(1.0, 0.76, 0.33));
-
-    let mut mesh2: Mesh = Mesh::new(
-        Vec3::new(5.0, 0.0, 10.0),
-        Mat3::IDENTITY,
-        Material::new(
-            Vec3::new(1.0, 0.86, 0.57),
-            Vec3::new(0.25, 0.19, 0.08),
-            50.0,
-        ),
-        false,
+    let cam: Camera = Camera::new(
+        (CosmicBody::rot_x(f32::consts::PI / 3.0) * Vec3::Y).extend(0.0), 
+        (CosmicBody::rot_x(f32::consts::PI / 3.0) * Vec3::Z).extend(0.0), 
+        (CosmicBody::rot_x(f32::consts::PI / 3.0) * (Vec3::Z * -1000.0)).extend(1.0), 
+        f32::consts::PI / 4.0, 
+        width as f32 / height as f32
     );
     mesh2.create_sphere(20, 20, 3.0, Vec3::new(0.0, 0.0, 1.0));
 
     loop {
-        mesh.move_origin(Mat4::from_mat3(Mat3::from_rotation_y(PI / 100.0)));
-        pipeline.resize();
-        pipeline.rasterizer.clear();
-        pipeline.render_mesh(&mut mesh);
-        pipeline.render_mesh(&mut mesh2);
+        let (width_u16, height_u16) = terminal::size().unwrap();
+        let (width, height) = (width_u16 as usize, height_u16 as usize * 2);
+
+        rasterizer.resize(width, height);
+
+        cosmic_simulator.orbit(day_count_incremental);
+        let triangles: Vec<Triangle> = cosmic_simulator.calculate_triangles(cam);
+        let mut raster_triangles: Vec<RasterTriangle> = vec![];
+        for triangle in triangles.iter() {
+            raster_triangles.push(RasterTriangle::from_world_view(*triangle, projection));
+        }
+        for raster_triangle in raster_triangles.iter() {
+            rasterizer.render_triangle(raster_triangle);
+        }
+        let mut color_printer = Printer::new(print_type, width, height);
+        color_printer.print(&mut rasterizer.frame_buff);
+        stdout().write_all(&color_printer.buff).unwrap();
+        rasterizer.clear();
+        thread::sleep(time::Duration::from_millis(10));
+    }
 
         pipeline.print();
         thread::sleep(Duration::from_millis(10));
