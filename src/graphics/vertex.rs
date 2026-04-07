@@ -129,9 +129,7 @@ impl RasterVertex {
         inv_w: f32,
     ) -> f32 {
         let (a, b, c): (RasterVertex, RasterVertex, RasterVertex) = triangle;
-        let (alpha, beta, gamma): (f32, f32, f32) = barycentric_coordinate;
-        alpha * a.pos.z + beta * b.pos.z + gamma * c.pos.z
-        /*
+
         Self::interpolate::<f32>(
             triangle,
             a.pos.z,
@@ -140,7 +138,6 @@ impl RasterVertex {
             barycentric_coordinate,
             inv_w,
         )
-        */
     }
 
     pub fn interpolate_color(
