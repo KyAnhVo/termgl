@@ -5,10 +5,10 @@ use crate::graphics::{
     projection::Camera,
     rasterizer::Rasterizer,
     shader::Shader,
-    vertex::{Material, RasterVertex, Vertex},
+    vertex::RasterVertex,
 };
 use crossterm::terminal;
-use glam::{Mat3, Mat4, Vec3, Vec4, Vec4Swizzles};
+use glam::{Mat4, Vec3};
 use std::io::{Write, stdout};
 
 pub struct Pipeline3D {
@@ -22,12 +22,19 @@ pub struct Pipeline3D {
     pub printer: Printer,
     /// Assume 1 camera
     pub camera: Camera,
-    /// meshes to be rendered, original
+    /// shader to shade the meshes
     pub shader: Shader,
+    /// shading mode for the meshes
+    pub shading_mode: ShadingMode,
 }
 
 impl Pipeline3D {
-    pub fn new(default_background: Vec3, printer_type: PrinterType, camera: Camera) -> Self {
+    pub fn new(
+        default_background: Vec3,
+        printer_type: PrinterType,
+        camera: Camera,
+        shading_mode: ShadingMode,
+    ) -> Self {
         let (width_u16, height_u16) = terminal::size().unwrap();
         let (width, height) = (width_u16 as usize, height_u16 as usize * 2);
 
@@ -42,6 +49,7 @@ impl Pipeline3D {
             printer,
             camera,
             shader,
+            shading_mode,
         }
     }
 
@@ -52,13 +60,16 @@ impl Pipeline3D {
         if width != self.width || height != self.height {
             self.width = width;
             self.height = height;
+            self.camera.resize(width, height);
             self.rasterizer.resize(width, height);
             self.printer.resize(width, height);
         }
     }
 
     /// Render the meshes into rasterizer's buffer
-    pub fn render_mesh(&mut self, mesh: &mut Mesh, shade_mode: ShadingMode) {
+    pub fn render_mesh(&mut self, mesh: &mut Mesh) {
+        let shading_mode: ShadingMode = self.shading_mode;
+
         // finalize mesh normals and vertices (to world space)
         mesh.finalize_normals();
 
@@ -73,16 +84,13 @@ impl Pipeline3D {
         }
 
         // shade vertices for Gouraud shading
-        if shade_mode == ShadingMode::Gouraud || shade_mode == ShadingMode::Flat {
+        if shading_mode == ShadingMode::Gouraud || shading_mode == ShadingMode::Flat {
             self.shader.shade_mesh_gouraud(mesh, self.camera);
-            println!("enter gouraud");
-        } else {
-            println!("skip gouraud");
         }
 
-        let is_phong: bool = (shade_mode == ShadingMode::Phong) && !mesh.no_shade;
+        let is_phong: bool = (shading_mode == ShadingMode::Phong) && !mesh.no_shade;
         self.rasterizer
-            .rasterize_mesh(mesh, &self.shader, self.camera, is_phong,);
+            .rasterize_mesh(mesh, &self.shader, self.camera, is_phong);
     }
 
     /// Print the buffer into the screen

@@ -50,6 +50,7 @@ fn test_pipeline() {
             (Vec3::Y * -30.0).extend(1.0),
             PI / 4.0,
         ),
+        ShadingMode::Phong,
     );
 
     let intensity: f32 = 5.0;
@@ -65,8 +66,6 @@ fn test_pipeline() {
             LightSourceShadingMode::Lambertian,
         ));
 
-    let original_origin: Vec3 = Vec3::Z * 10.0;
-    let mut theta: f32 = 0.0;
     let mut mesh: Mesh = Mesh::new(
         Vec3::Z * 10.0,
         Mat3::IDENTITY,
@@ -85,15 +84,26 @@ fn test_pipeline() {
         },
         false,
     );
+    mesh.create_sphere(20, 20, 2.0, Vec3::new(1.0, 0.76, 0.33));
 
-    mesh.create_sphere(2.0, Vec3::new(1.0, 0.76, 0.33));
-    mesh.finalize_normals();
+    let mut mesh2: Mesh = Mesh::new(
+        Vec3::new(5.0, 0.0, 10.0),
+        Mat3::IDENTITY,
+        Material::new(
+            Vec3::new(1.0, 0.86, 0.57),
+            Vec3::new(0.25, 0.19, 0.08),
+            50.0,
+        ),
+        false,
+    );
+    mesh2.create_sphere(20, 20, 3.0, Vec3::new(0.0, 0.0, 1.0));
 
     loop {
         mesh.move_origin(Mat4::from_mat3(Mat3::from_rotation_y(PI / 100.0)));
         pipeline.resize();
         pipeline.rasterizer.clear();
-        pipeline.render_mesh(&mut mesh, ShadingMode::Phong);
+        pipeline.render_mesh(&mut mesh);
+        pipeline.render_mesh(&mut mesh2);
 
         pipeline.print();
         thread::sleep(Duration::from_millis(10));

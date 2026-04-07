@@ -39,7 +39,7 @@ impl Camera {
 
         let mut up3: Vec3 = up.xyz().normalize();
         let gaze3: Vec3 = gaze.xyz().normalize();
-        let right3: Vec3 = up3.cross(gaze3);
+        let right3: Vec3 = gaze3.cross(up3);
         up3 = right3.cross(gaze3).normalize();
 
         let (width_u16, height_u16) = terminal::size().unwrap();
@@ -54,6 +54,10 @@ impl Camera {
             fov,
             aspect_ratio,
         }
+    }
+
+    pub fn resize(&mut self, width: usize, height: usize) {
+        self.aspect_ratio = width as f32 / (height as f32);
     }
 
     pub fn m_view(self) -> Mat4 {

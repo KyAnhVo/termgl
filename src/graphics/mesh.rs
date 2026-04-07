@@ -144,31 +144,43 @@ impl Mesh {
         self.no_change = false;
     }
 
+    /// multiply the origin by the 4x4 matrix, 3x3 linear transformation
+    /// and 3x1 translation.
+    /// This is potentially not as good as move_origin_to for some specific
+    /// methods that need high accuracy due to f32's small representation space.
     pub fn move_origin(&mut self, rotation: Mat4) {
         self.origin = (rotation * self.origin.extend(1.0)).xyz();
+        self.no_change = false;
+    }
+
+    pub fn move_origin_to(&mut self, to: Vec3) {
+        self.origin = to;
         self.no_change = false;
     }
 
     // Utility functions
 
     /// Make mesh a sphere with radius centered around the mesh's origin
-    pub fn create_sphere(&mut self, radius: f32, color: Vec3) {
-        let sectors = 20; // Longitude
-        let stacks = 20; // Latitude
-
+    pub fn create_sphere(
+        &mut self,
+        longtitudes: usize,
+        latitudes: usize,
+        radius: f32,
+        color: Vec3,
+    ) {
         self.vao.clear();
         self.ebo.clear();
         self.vertex_orthogonals.clear();
 
-        let sector_step = 2.0 * std::f32::consts::PI / sectors as f32;
-        let stack_step = std::f32::consts::PI / stacks as f32;
+        let sector_step = 2.0 * std::f32::consts::PI / longtitudes as f32;
+        let stack_step = std::f32::consts::PI / latitudes as f32;
 
-        for i in 0..=stacks {
+        for i in 0..=latitudes {
             let stack_angle = std::f32::consts::PI / 2.0 - i as f32 * stack_step;
             let xy = radius * stack_angle.cos();
             let z = radius * stack_angle.sin();
 
-            for j in 0..=sectors {
+            for j in 0..=longtitudes {
                 let sector_angle = j as f32 * sector_step;
 
                 let x = xy * sector_angle.cos();
@@ -176,25 +188,25 @@ impl Mesh {
 
                 let pos = Vec3::new(x, y, z);
 
-                self.vao.push(Vertex::new(pos, color, self.no_shade));
+                self.vao.push(Vertex::new(pos, color));
 
                 self.vertex_orthogonals.push(pos.extend(0.0).normalize());
             }
         }
 
         // Generate EBO (Indices)
-        for i in 0..stacks {
-            let mut k1 = i * (sectors + 1);
-            let mut k2 = k1 + sectors + 1;
+        for i in 0..latitudes {
+            let mut k1 = i * (longtitudes + 1);
+            let mut k2 = k1 + longtitudes + 1;
 
-            for _ in 0..sectors {
+            for _ in 0..longtitudes {
                 if i != 0 {
                     self.ebo.push(k1);
                     self.ebo.push(k2);
                     self.ebo.push(k1 + 1);
                 }
 
-                if i != (stacks - 1) {
+                if i != (latitudes - 1) {
                     self.ebo.push(k1 + 1);
                     self.ebo.push(k2);
                     self.ebo.push(k2 + 1);

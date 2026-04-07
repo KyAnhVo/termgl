@@ -9,6 +9,12 @@ pub struct Material {
     pub p: f32,
 }
 
+impl Material {
+    pub fn new(ks: Vec3, ka: Vec3, p: f32) -> Self {
+        Self { ks, ka, p }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct Vertex {
     // position in world view (w = 1.0)
@@ -16,13 +22,10 @@ pub struct Vertex {
 
     // color of vertex, color = [0,1]x[0,1]x[0,1]
     pub color: Vec3,
-
-    // true if apply shading to this vertex
-    pub no_shade: bool,
 }
 
 impl Vertex {
-    pub fn new(pos: Vec3, color: Vec3, no_shade: bool) -> Self {
+    pub fn new(pos: Vec3, color: Vec3) -> Self {
         assert!(0.0 <= color.x && color.x <= 1.0);
         assert!(0.0 <= color.y && color.y <= 1.0);
         assert!(0.0 <= color.z && color.z <= 1.0);
@@ -30,7 +33,6 @@ impl Vertex {
         Self {
             pos: pos.extend(1.0),
             color,
-            no_shade,
         }
     }
 }
