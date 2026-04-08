@@ -71,15 +71,15 @@ impl Pipeline3D {
         let shading_mode: ShadingMode = self.shading_mode;
 
         // finalize mesh normals and vertices (to world space)
-        mesh.finalize_normals();
+        mesh.finalize_mesh();
 
         // transform to ndc-space
         let m_obj_to_ndc: Mat4 = self.camera.m_perspective(0.1, 10000000.0)
             * self.camera.m_view()
             * mesh.m_to_world_space();
-        mesh.projected_vao.clear();
-        for v in &mesh.vao {
-            mesh.projected_vao
+        mesh.raster_vertices.clear();
+        for v in &mesh.vertices {
+            mesh.raster_vertices
                 .push(RasterVertex::from_world_view(*v, m_obj_to_ndc));
         }
 

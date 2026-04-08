@@ -60,10 +60,10 @@ impl Shader {
         if mesh.no_shade {
             return;
         }
-        for v in 0..mesh.vao.len() {
-            mesh.projected_vao[v].color = self.shade_vertex(
-                mesh.vao_world_space[v],
-                mesh.v_orthogonals_world_space[v],
+        for v in 0..mesh.vertices.len() {
+            mesh.raster_vertices[v].color = self.shade_vertex(
+                mesh.vertices_world_space[v],
+                mesh.normals_world_space[v],
                 mesh.material,
                 cam,
             );

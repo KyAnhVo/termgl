@@ -68,14 +68,8 @@ impl Rasterizer {
         }
     }
 
-    pub fn rasterize_mesh(
-        &mut self,
-        mesh: &Mesh,
-        shader: &Shader,
-        camera: Camera,
-        is_phong: bool,
-    ) {
-        for i in 0..(mesh.ebo.len() / 3) {
+    pub fn rasterize_mesh(&mut self, mesh: &Mesh, shader: &Shader, camera: Camera, is_phong: bool) {
+        for i in 0..(mesh.triangles.len() / 3) {
             self.rasterize_triangle(mesh, 3 * i, shader, camera, is_phong);
         }
     }
@@ -89,26 +83,25 @@ impl Rasterizer {
         is_phong: bool,
     ) {
         let (i1, i2, i3): (usize, usize, usize) = (
-            mesh.ebo[start_ind],
-            mesh.ebo[start_ind + 1],
-            mesh.ebo[start_ind + 2],
+            mesh.triangles[start_ind],
+            mesh.triangles[start_ind + 1],
+            mesh.triangles[start_ind + 2],
         );
         let (va, vb, vc): (Vertex, Vertex, Vertex) = (
-            mesh.vao_world_space[i1],
-            mesh.vao_world_space[i2],
-            mesh.vao_world_space[i3],
+            mesh.vertices_world_space[i1],
+            mesh.vertices_world_space[i2],
+            mesh.vertices_world_space[i3],
         );
         let (ra, rb, rc): (RasterVertex, RasterVertex, RasterVertex) = (
-            mesh.projected_vao[i1],
-            mesh.projected_vao[i2],
-            mesh.projected_vao[i3],
+            mesh.raster_vertices[i1],
+            mesh.raster_vertices[i2],
+            mesh.raster_vertices[i3],
         );
         let (na, nb, nc): (Vec4, Vec4, Vec4) = (
-            mesh.v_orthogonals_world_space[i1],
-            mesh.v_orthogonals_world_space[i2],
-            mesh.v_orthogonals_world_space[i3],
+            mesh.normals_world_space[i1],
+            mesh.normals_world_space[i2],
+            mesh.normals_world_space[i3],
         );
-
 
         if RasterVertex::is_back_facing(ra, rb, rc) {
             return;
