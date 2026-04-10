@@ -1,4 +1,8 @@
-use crate::graphics::vertex::{Material, RasterVertex, Vertex};
+use crate::graphics::{
+    projection::Camera,
+    uv_map::{HeightMap, NormalMap, UVMap},
+    vertex::{Material, RasterVertex, Vertex},
+};
 use glam::{Mat3, Mat4, Vec2, Vec3, Vec4, Vec4Swizzles};
 
 /// a 3-tuple of indices of vertex, normal, and uv
@@ -20,7 +24,6 @@ impl MeshVertexIndices {
 }
 
 /// An object to be rendered, represented by an EBO and a VAO
-#[derive(Clone)]
 pub struct Mesh {
     /// The origin of the mesh in object space
     origin: Vec3,
@@ -55,6 +58,15 @@ pub struct Mesh {
     /// As of this version, expect the mesh to remain the same material
     pub material: Material,
 
+    ///texture uv map
+    pub texture_map: Option<UVMap>,
+
+    /// height uv map
+    pub height_map: Option<HeightMap>,
+
+    /// normal uv map
+    pub normal_map: Option<NormalMap>,
+
     /// Some objects might not want to be shaded (e.g. background image,
     /// 2D game with no shading, or a light source)
     pub no_shade: bool,
@@ -78,6 +90,9 @@ impl Mesh {
             uv: vec![],
             triangles: vec![],
             material,
+            texture_map: None,
+            height_map: None,
+            normal_map: None,
             no_shade,
             no_change: false,
         }
@@ -146,6 +161,33 @@ impl Mesh {
         self.no_change = true;
     }
 
+    /// Returns the correct uv that is based on the height map, if one exists.
+    /// Otherwise, returns the original uv.
+    pub fn get_parallaxed_uv(&self, uv: Vec2, cam: &Camera) -> Vec2 {
+        match self.height_map {
+            Some(ref height_map) => {
+                let view_dir: Vec3 = cam.pos.xyz() / cam.pos.z - self.origin;
+                height_map.interpolate_parallaxed_uv(uv, view_dir)
+            }
+            None => uv,
+        }
+    }
+
+    /// adds texture map, panics if path is invalid
+    pub fn add_texture_map(&mut self, path: &str) {
+        self.texture_map = Some(UVMap::new(path));
+    }
+
+    /// adds normal map, panics if path is invalid
+    pub fn add_normal_map(&mut self, path: &str) {
+        self.normal_map = Some(NormalMap::new(path));
+    }
+
+    /// adds height map, panics if path is invalid
+    pub fn add_height_map(&mut self, path: &str, height_scale: f32) {
+        self.height_map = Some(HeightMap::new(path, height_scale));
+    }
+
     /// return the matrix to transform vertex to world space
     pub fn m_to_world_space(&self) -> Mat4 {
         Mat4::from_cols(
@@ -167,7 +209,7 @@ impl Mesh {
         self.no_change = false;
     }
 
-    /// moves the object/mesh's origin
+    /// moves the object/mesh's origin by a specific vector (origin = origin + movement)
     pub fn translate(&mut self, movement: Vec3) {
         if movement == Vec3::ZERO {
             return;
@@ -185,6 +227,7 @@ impl Mesh {
         self.no_change = false;
     }
 
+    /// moves the object/mesh's origin to a specific position in world space.
     pub fn move_origin_to(&mut self, to: Vec3) {
         self.origin = to;
         self.no_change = false;

@@ -66,6 +66,7 @@ impl NormalMap {
         let ty: f32 = f * (duv2.y * e1.y - duv1.y * e2.y);
         let tz: f32 = f * (duv2.y * e1.z - duv1.y * e2.z);
 
+        // create tbn, the tangent basis matrix
         let t_pre_gram_schmidt: Vec3 = Vec3::new(tx, ty, tz);
         let n: Vec3 = (e1.cross(e2)).normalize();
         let t: Vec3 = (t_pre_gram_schmidt - n * n.dot(t_pre_gram_schmidt)).normalize();

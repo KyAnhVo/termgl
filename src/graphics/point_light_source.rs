@@ -62,18 +62,19 @@ impl PointLightSource {
     pub fn shade_vertex(
         &self,
         vertex: Vertex,
+        vertex_color: Vec3,
         material: Material,
         normal: Vec4,
         cam: Camera,
     ) -> Vec3 {
         // uses triangle.a as ref for most things, assume all 3 are equivalent
-        let kd: Vec3 = vertex.color;
+        let kd: Vec3 = vertex_color;
         let ks: Vec3 = material.ks;
         let ka: Vec3 = material.ka;
         let p: f32 = material.p;
 
         let n: Vec3 = normal.xyz();
-        let v: Vec3 = (cam.e.xyz() - vertex.pos.xyz()).normalize();
+        let v: Vec3 = (cam.pos.xyz() - vertex.pos.xyz()).normalize();
         let l_unnorm: Vec3 = self.pos - vertex.pos.xyz();
         let r2: f32 = l_unnorm.length_squared();
         let l: Vec3 = l_unnorm.normalize();
@@ -103,14 +104,13 @@ impl PointLightSource {
         color: Vec3,
         cam: Camera,
     ) -> Vec3 {
-
         let kd: Vec3 = color;
         let ks: Vec3 = material.ks;
         let ka: Vec3 = material.ka;
         let p: f32 = material.p;
 
         let n: Vec3 = normal.xyz();
-        let v: Vec3 = (cam.e.xyz() - pos).normalize();
+        let v: Vec3 = (cam.pos.xyz() - pos).normalize();
         let l_unnorm: Vec3 = self.pos - pos;
         let l: Vec3 = l_unnorm.normalize();
         let r2: f32 = l_unnorm.length_squared();

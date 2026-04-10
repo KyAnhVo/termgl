@@ -4,16 +4,16 @@ use glam::{Mat4, Vec3, Vec4, Vec4Swizzles};
 #[derive(Clone, Copy)]
 pub struct Camera {
     /// up vector
-    pub t: Vec4,
+    pub up: Vec4,
 
     /// gaze vector
-    pub g: Vec4,
+    pub gaze: Vec4,
 
     /// right vector
-    pub r: Vec4,
+    pub right: Vec4,
 
     /// position of camera
-    pub e: Vec4,
+    pub pos: Vec4,
 
     /// field of view (in radians)
     fov: f32,
@@ -47,10 +47,10 @@ impl Camera {
         let aspect_ratio: f32 = width as f32 / height as f32;
 
         Self {
-            t: up3.extend(0.0),
-            g: gaze3.extend(0.0),
-            r: right3.extend(0.0),
-            e: pos,
+            up: up3.extend(0.0),
+            gaze: gaze3.extend(0.0),
+            right: right3.extend(0.0),
+            pos,
             fov,
             aspect_ratio,
         }
@@ -65,12 +65,12 @@ impl Camera {
             Vec4::new(1.0, 0.0, 0.0, 0.0),
             Vec4::new(0.0, 1.0, 0.0, 0.0),
             Vec4::new(0.0, 0.0, 1.0, 0.0),
-            Vec4::new(-self.e.x, -self.e.y, -self.e.z, 1.0),
+            Vec4::new(-self.pos.x, -self.pos.y, -self.pos.z, 1.0),
         );
         let r_view: Mat4 = Mat4::from_cols(
-            Vec4::new(self.r.x, self.t.x, -self.g.x, 0.0),
-            Vec4::new(self.r.y, self.t.y, -self.g.y, 0.0),
-            Vec4::new(self.r.z, self.t.z, -self.g.z, 0.0),
+            Vec4::new(self.right.x, self.up.x, -self.gaze.x, 0.0),
+            Vec4::new(self.right.y, self.up.y, -self.gaze.y, 0.0),
+            Vec4::new(self.right.z, self.up.z, -self.gaze.z, 0.0),
             Vec4::new(0.0, 0.0, 0.0, 1.0),
         );
         r_view * t_view

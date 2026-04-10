@@ -83,14 +83,8 @@ impl Pipeline3D {
                 .push(RasterVertex::from_world_view(*v, m_obj_to_ndc));
         }
 
-        // shade vertices for Gouraud shading
-        if shading_mode == ShadingMode::Gouraud || shading_mode == ShadingMode::Flat {
-            self.shader.shade_mesh_gouraud(mesh, self.camera);
-        }
-
-        let is_phong: bool = (shading_mode == ShadingMode::Phong) && !mesh.no_shade;
         self.rasterizer
-            .rasterize_mesh(mesh, &self.shader, self.camera, is_phong);
+            .rasterize_mesh(mesh, &self.shader, self.camera, shading_mode);
     }
 
     /// Print the buffer into the screen

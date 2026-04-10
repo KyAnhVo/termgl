@@ -142,15 +142,15 @@ impl RasterVertex {
 
     pub fn interpolate_color(
         triangle: (RasterVertex, RasterVertex, RasterVertex),
+        color: (Vec3, Vec3, Vec3),
         barycentric_coordinate: (f32, f32, f32),
         inv_w: f32,
     ) -> Vec3 {
-        let (a, b, c): (RasterVertex, RasterVertex, RasterVertex) = triangle;
         Self::interpolate::<Vec3>(
             triangle,
-            a.color,
-            b.color,
-            c.color,
+            color.0,
+            color.1,
+            color.2,
             barycentric_coordinate,
             inv_w,
         )
@@ -183,6 +183,22 @@ impl RasterVertex {
             world_space_triangle.0,
             world_space_triangle.1,
             world_space_triangle.2,
+            barycentric_coordinate,
+            inv_w,
+        )
+    }
+
+    pub fn interpolate_uv(
+        triangle: (RasterVertex, RasterVertex, RasterVertex),
+        uv_triangle: (Vec2, Vec2, Vec2),
+        barycentric_coordinate: (f32, f32, f32),
+        inv_w: f32,
+    ) -> Vec2 {
+        Self::interpolate::<Vec2>(
+            triangle,
+            uv_triangle.0,
+            uv_triangle.1,
+            uv_triangle.2,
             barycentric_coordinate,
             inv_w,
         )

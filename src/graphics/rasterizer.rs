@@ -1,7 +1,8 @@
 use glam::{Vec2, Vec3, Vec4, Vec4Swizzles};
 
 use crate::graphics::{
-    mesh::Mesh,
+    mesh::{Mesh, MeshVertexIndices},
+    options::ShadingMode,
     projection::Camera,
     shader::Shader,
     vertex::{RasterVertex, Vertex},
@@ -68,9 +69,15 @@ impl Rasterizer {
         }
     }
 
-    pub fn rasterize_mesh(&mut self, mesh: &Mesh, shader: &Shader, camera: Camera, is_phong: bool) {
+    pub fn rasterize_mesh(
+        &mut self,
+        mesh: &Mesh,
+        shader: &Shader,
+        camera: Camera,
+        shading_mode: ShadingMode,
+    ) {
         for i in 0..(mesh.triangles.len() / 3) {
-            self.rasterize_triangle(mesh, 3 * i, shader, camera, is_phong);
+            self.rasterize_triangle(mesh, 3 * i, shader, camera, shading_mode);
         }
     }
 
@@ -80,27 +87,51 @@ impl Rasterizer {
         start_ind: usize,
         shader: &Shader,
         camera: Camera,
-        is_phong: bool,
+        shading_mode: ShadingMode,
     ) {
-        let (i1, i2, i3): (usize, usize, usize) = (
+        let (ia, ib, ic): (MeshVertexIndices, MeshVertexIndices, MeshVertexIndices) = (
             mesh.triangles[start_ind],
             mesh.triangles[start_ind + 1],
             mesh.triangles[start_ind + 2],
         );
         let (va, vb, vc): (Vertex, Vertex, Vertex) = (
-            mesh.vertices_world_space[i1],
-            mesh.vertices_world_space[i2],
-            mesh.vertices_world_space[i3],
+            mesh.vertices_world_space[ia.vertex_ind],
+            mesh.vertices_world_space[ib.vertex_ind],
+            mesh.vertices_world_space[ic.vertex_ind],
         );
         let (ra, rb, rc): (RasterVertex, RasterVertex, RasterVertex) = (
-            mesh.raster_vertices[i1],
-            mesh.raster_vertices[i2],
-            mesh.raster_vertices[i3],
+            mesh.raster_vertices[ia.vertex_ind],
+            mesh.raster_vertices[ib.vertex_ind],
+            mesh.raster_vertices[ic.vertex_ind],
         );
         let (na, nb, nc): (Vec4, Vec4, Vec4) = (
-            mesh.normals_world_space[i1],
-            mesh.normals_world_space[i2],
-            mesh.normals_world_space[i3],
+            mesh.normals_world_space[ia.normal_ind],
+            mesh.normals_world_space[ib.normal_ind],
+            mesh.normals_world_space[ic.normal_ind],
+        );
+        let (uva, uvb, uvc): (Vec2, Vec2, Vec2) =
+            (mesh.uv[ia.uv_ind], mesh.uv[ib.uv_ind], mesh.uv[ic.uv_ind]);
+
+        // these bunch for gouraud shading
+        // tbf at this point just gouraud it if not phong
+        // but oh well styling purpose I suppose :/
+        let vertices_uv_parallaxed: (Vec2, Vec2, Vec2) = (
+            mesh.get_parallaxed_uv(uva, &camera),
+            mesh.get_parallaxed_uv(uvb, &camera),
+            mesh.get_parallaxed_uv(uvc, &camera),
+        );
+        let vertices_kd: (Vec3, Vec3, Vec3) = match &mesh.texture_map {
+            Some(texture_map) => (
+                texture_map.interpolate(vertices_uv_parallaxed.0),
+                texture_map.interpolate(vertices_uv_parallaxed.1),
+                texture_map.interpolate(vertices_uv_parallaxed.2),
+            ),
+            None => (ra.color, rb.color, rc.color),
+        };
+        let vertices_shaded_color: (Vec3, Vec3, Vec3) = (
+            shader.shade_point_phong(va.pos.xyz(), na, mesh.material, vertices_kd.0, camera),
+            shader.shade_point_phong(vb.pos.xyz(), nb, mesh.material, vertices_kd.1, camera),
+            shader.shade_point_phong(vc.pos.xyz(), nc, mesh.material, vertices_kd.2, camera),
         );
 
         if RasterVertex::is_back_facing(ra, rb, rc) {
@@ -135,31 +166,71 @@ impl Rasterizer {
                 if !RasterVertex::is_inside(ra, rb, rc, p) {
                     continue;
                 }
+
+                // both used for later interpolations
                 let barycentric_coordinate: (f32, f32, f32) =
                     RasterVertex::barycentric_coordinate(ra, rb, rc, p);
                 let p_inv_w: f32 =
                     RasterVertex::interpolate_inv_w(ra, rb, rc, barycentric_coordinate);
 
+                // z is used for depth buffering
                 let z: f32 =
                     RasterVertex::interpolate_z((ra, rb, rc), barycentric_coordinate, p_inv_w);
 
-                let color: Vec3 = if !is_phong {
-                    // just interpolate color over, works for gouraud and no-shade
-                    RasterVertex::interpolate_color((ra, rb, rc), barycentric_coordinate, p_inv_w)
-                } else {
-                    // use phong shading. Must interpolate normals, color, and position.
-                    let n: Vec4 = RasterVertex::interpolate_normals(
+                let color: Vec3 = if mesh.no_shade {
+                    // just interpolate color over
+                    RasterVertex::interpolate_color(
                         (ra, rb, rc),
-                        (na, nb, nc),
+                        (ra.color, rb.color, rc.color),
                         barycentric_coordinate,
                         p_inv_w,
                     )
-                    .normalize();
-                    let kd: Vec3 = RasterVertex::interpolate_color(
-                        (ra, rb, rc),
-                        barycentric_coordinate,
-                        p_inv_w,
+                } else if shading_mode == ShadingMode::Phong {
+                    // use phong shading
+                    // interpolate uv, then parallax it with the height map
+                    let uv: Vec2 = mesh.get_parallaxed_uv(
+                        RasterVertex::interpolate_uv(
+                            (ra, rb, rc),
+                            (uva, uvb, uvc),
+                            barycentric_coordinate,
+                            p_inv_w,
+                        ),
+                        &camera,
                     );
+
+                    // if there is no normal map, we interpolate the normals.
+                    // else we use the interpolated and parallaxed uv to
+                    // calculate the normal.
+                    let n: Vec4 = match &mesh.normal_map {
+                        Some(normal_map) => normal_map
+                            .interpolate(
+                                uv,
+                                (va.pos.xyz(), vb.pos.xyz(), vc.pos.xyz()),
+                                (uva, uvb, uvc),
+                            )
+                            .extend(0.0),
+                        None => RasterVertex::interpolate_normals(
+                            (ra, rb, rc),
+                            (na, nb, nc),
+                            barycentric_coordinate,
+                            p_inv_w,
+                        )
+                        .normalize(),
+                    };
+
+                    // if texture map exists, we use our uv to get from texture map,
+                    // else we interpolate color.
+                    let kd: Vec3 = match &mesh.texture_map {
+                        Some(texture_map) => texture_map.interpolate(uv),
+                        None => RasterVertex::interpolate_color(
+                            (ra, rb, rc),
+                            (ra.color, rb.color, rc.color),
+                            barycentric_coordinate,
+                            p_inv_w,
+                        ),
+                    };
+
+                    // interpolate position... no uv here sorry hehe
                     let pos: Vec3 = RasterVertex::interpolate_position(
                         (ra, rb, rc),
                         (va.pos, vb.pos, vc.pos),
@@ -167,7 +238,24 @@ impl Rasterizer {
                         p_inv_w,
                     )
                     .xyz();
+
+                    // probably goes well, no crash
                     shader.shade_point_phong(pos, n, mesh.material, kd, camera)
+                } else if shading_mode == ShadingMode::Gouraud {
+                    // gouraud shading: interpolate color from vertices
+                    RasterVertex::interpolate_color(
+                        (ra, rb, rc),
+                        (
+                            vertices_shaded_color.0,
+                            vertices_shaded_color.1,
+                            vertices_shaded_color.2,
+                        ),
+                        barycentric_coordinate,
+                        p_inv_w,
+                    )
+                } else {
+                    // flat shading: use the first vertex's color
+                    vertices_shaded_color.0
                 };
 
                 self.draw_pixel((i, j), z, color);

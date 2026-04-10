@@ -52,7 +52,7 @@ impl Printer {
                 let first_color: Vec3 = color[i_frame * self.width + j];
                 let second_color: Vec3 = color[(i_frame + 1) * self.width + j];
 
-                match self.printer_type {
+                match &self.printer_type {
                     PrinterType::Ascii => {
                         // calculate avr color by add then div 2 will overflow,
                         // so we do this. Might induce error, but it's at most 2,
