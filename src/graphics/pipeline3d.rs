@@ -68,6 +68,7 @@ impl Pipeline3D {
 
     /// Render the meshes into rasterizer's buffer
     pub fn render_mesh(&mut self, mesh: &mut Mesh) {
+        self.rasterizer.clear();
         let shading_mode: ShadingMode = self.shading_mode;
 
         // finalize mesh normals and vertices (to world space)

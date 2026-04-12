@@ -103,7 +103,7 @@ impl UVMap {
         let (udim_u, udim_v): (u32, u32) = self.buff.dimensions();
         let (dim_u, dim_v): (f32, f32) = (udim_u as f32, udim_v as f32);
         let (u, v): (f32, f32) = (uv.x * dim_u, uv.y * dim_v);
-        let (u_low, v_low): (f32, f32) = (u.floor(), v.floor());
+        let (u_low, v_low): (f32, f32) = (u.floor().min(dim_u - 1.0), v.floor().min(dim_v - 1.0));
         let (u_high, v_high): (f32, f32) = ((u_low + 1.0).min(dim_u - 1.0), (v_low + 1.0).min(dim_v - 1.0));
 
         // tu for interpolating u pos, tv for interpolating v pos,
