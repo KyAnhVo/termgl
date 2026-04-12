@@ -1,5 +1,5 @@
 use glam::{Mat3, Vec2, Vec3};
-use std::f32::consts::PI;
+use std::{f32::consts::PI};
 use std::thread::sleep;
 use std::time;
 use termgl::{
@@ -9,7 +9,11 @@ use termgl::{
 
 fn main() {
     let mut mesh: Mesh = create_sphere(0.5, Vec3::Z, 20, 20);
+    
+    let load_texture_start = time::Instant::now();
     mesh.add_texture_map("assets/earth.jpg");
+    let load_texture_duration = load_texture_start.elapsed();
+    eprintln!("Texture load time: {}ms", load_texture_duration.as_millis());
 
     let light: PointLightSource = PointLightSource::new(
         Vec3::new(1.0, 0.0, -0.5) * 0.5,
