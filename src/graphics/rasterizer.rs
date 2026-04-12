@@ -1,7 +1,7 @@
 use glam::{Vec2, Vec3, Vec4, Vec4Swizzles};
 
 use crate::graphics::{
-    mesh::{Mesh, MeshVertexIndices},
+    mesh::{Mesh, VertexIndices},
     options::ShadingMode,
     projection::Camera,
     shader::Shader,
@@ -123,7 +123,7 @@ impl Rasterizer {
         (Vec4, Vec4, Vec4),
         (Vec2, Vec2, Vec2),
     ) {
-        let (ia, ib, ic): (MeshVertexIndices, MeshVertexIndices, MeshVertexIndices) = (
+        let (ia, ib, ic): (VertexIndices, VertexIndices, VertexIndices) = (
             mesh.triangles[start_ind],
             mesh.triangles[start_ind + 1],
             mesh.triangles[start_ind + 2],

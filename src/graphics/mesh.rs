@@ -7,13 +7,13 @@ use glam::{Mat3, Mat4, Vec2, Vec3, Vec4, Vec4Swizzles};
 
 /// a 3-tuple of indices of vertex, normal, and uv
 #[derive(Clone, Copy)]
-pub struct MeshVertexIndices {
+pub struct VertexIndices {
     pub vertex_ind: usize,
     pub normal_ind: usize,
     pub uv_ind: usize,
 }
 
-impl MeshVertexIndices {
+impl VertexIndices {
     pub fn new(vertex_ind: usize, normal_ind: usize, uv_ind: usize) -> Self {
         Self {
             vertex_ind,
@@ -53,7 +53,7 @@ pub struct Mesh {
     /// the VAO, and each 3 elements 3x, 3x+1, 3x+2 in
     /// the EBO creates a triangle.
     /// Note: ebo.size() % 3 == 0 must remain true.
-    pub triangles: Vec<MeshVertexIndices>,
+    pub triangles: Vec<VertexIndices>,
 
     /// As of this version, expect the mesh to remain the same material
     pub material: Material,
@@ -117,9 +117,9 @@ impl Mesh {
     ///
     pub fn add_triangle(
         &mut self,
-        a: MeshVertexIndices,
-        b: MeshVertexIndices,
-        c: MeshVertexIndices,
+        a: VertexIndices,
+        b: VertexIndices,
+        c: VertexIndices,
     ) {
         let vertices_len: usize = self.vertices.len();
         let uv_len: usize = self.uv.len();

@@ -1,15 +1,24 @@
+use glam::{Mat3, Vec2, Vec3};
 use std::f32::consts::PI;
-use glam::{Mat3, Vec3, Vec2};
-use termgl::{Pipeline3D, Vertex, PointLightSource, Mesh, Material, MeshVertexIndices, Camera, ShadingMode, PrinterType, LightSourceShadingMode};
-use std::{thread, time};
 use std::thread::sleep;
+use std::time;
+use termgl::{
+    Camera, LightSourceShadingMode, Material, Mesh, Pipeline3D, PointLightSource, PrinterType,
+    ShadingMode, Vertex, VertexIndices,
+};
 
 fn main() {
     let mut mesh: Mesh = create_sphere(0.5, Vec3::Z, 20, 20);
     mesh.add_texture_map("assets/earth_cloud.jpg");
 
     let light: PointLightSource = PointLightSource::new(
-        Vec3::new(1.0, 0.0, -0.5) * 0.5, None, Vec3::ONE, Vec3::ZERO, Vec3::ZERO, Vec3::ONE, LightSourceShadingMode::Lambertian,
+        Vec3::new(1.0, 0.0, -0.5) * 0.5,
+        None,
+        Vec3::ONE,
+        Vec3::ZERO,
+        Vec3::ZERO,
+        Vec3::ONE,
+        LightSourceShadingMode::Lambertian,
     );
 
     let camera: Camera = Camera::new(
@@ -26,7 +35,7 @@ fn main() {
         Vec3::new(0.0, 0.0, 0.07),
         printer_type,
         camera,
-        shading_mode
+        shading_mode,
     );
 
     pipeline.shader.add_point_light_source(light);
@@ -41,19 +50,17 @@ fn main() {
         pipeline.render_mesh(&mut mesh);
         pipeline.print();
         let elapsed = start.elapsed();
-        sleep(time::Duration::from_millis(80).checked_sub(elapsed).unwrap_or_default());
+        sleep(
+            time::Duration::from_millis(10)
+                .checked_sub(elapsed)
+                .unwrap_or_default(),
+        );
     }
 }
 
-fn create_sphere(rad: f32, origin: Vec3, lat: usize, long: usize,) -> Mesh {
+fn create_sphere(rad: f32, origin: Vec3, lat: usize, long: usize) -> Mesh {
     let material: Material = Material::new(Vec3::ZERO, Vec3::ZERO, 0.005);
-    let mut mesh: Mesh = Mesh::new(
-        origin,
-        Mat3::IDENTITY,
-        material,
-        false,
-    );
-
+    let mut mesh: Mesh = Mesh::new(origin, Mat3::IDENTITY, material, false);
 
     // vertices + normals + uvs
     // lat = rings (pole to pole), long = slices around
@@ -70,7 +77,7 @@ fn create_sphere(rad: f32, origin: Vec3, lat: usize, long: usize,) -> Mesh {
             let normal: Vec3 = pos.normalize(); // outward normal
 
             let u: f32 = j as f32 / long as f32; // [0, 1] longitude
-            let v: f32 = i as f32 / lat as f32;  // [0, 1] latitude
+            let v: f32 = i as f32 / lat as f32; // [0, 1] latitude
 
             mesh.add_vertex(Vertex::new(pos, Vec3::ONE));
             mesh.add_normal(normal.extend(0.0));
@@ -89,7 +96,7 @@ fn create_sphere(rad: f32, origin: Vec3, lat: usize, long: usize,) -> Mesh {
             let bl: usize = tl + row;
             let br: usize = bl + 1;
 
-            let mk = |vi: usize| MeshVertexIndices::new(vi, vi, vi);
+            let mk = |vi: usize| VertexIndices::new(vi, vi, vi);
 
             // upper triangle of quad
             mesh.add_triangle(mk(tl), mk(bl), mk(tr));

@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 pub mod graphics;
 
-pub use crate::graphics::mesh::{Mesh, MeshVertexIndices};
+pub use crate::graphics::mesh::{Mesh, VertexIndices};
 pub use crate::graphics::options::{LightSourceShadingMode, ShadingMode};
 pub use crate::graphics::pipeline3d::Pipeline3D;
 pub use crate::graphics::point_light_source::PointLightSource;
