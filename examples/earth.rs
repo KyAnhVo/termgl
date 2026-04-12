@@ -9,13 +9,13 @@ use termgl::{
 
 fn main() {
     let mut mesh: Mesh = create_sphere(0.5, Vec3::Z, 20, 20);
-    mesh.add_texture_map("assets/earth_cloud.jpg");
+    mesh.add_texture_map("assets/earth.jpg");
 
     let light: PointLightSource = PointLightSource::new(
         Vec3::new(1.0, 0.0, -0.5) * 0.5,
         None,
         Vec3::ONE,
-        Vec3::ZERO,
+        Vec3::new(0.0, 0.0, 0.7) * 20.0,
         Vec3::ZERO,
         Vec3::ONE,
         LightSourceShadingMode::Lambertian,
@@ -40,7 +40,7 @@ fn main() {
 
     pipeline.shader.add_point_light_source(light);
 
-    let rotation: Mat3 = Mat3::from_rotation_y(PI / 25.0);
+    let rotation: Mat3 = Mat3::from_rotation_y(PI / 200.0);
 
     loop {
         let start = time::Instant::now();
@@ -59,8 +59,8 @@ fn main() {
 }
 
 fn create_sphere(rad: f32, origin: Vec3, lat: usize, long: usize) -> Mesh {
-    let material: Material = Material::new(Vec3::ZERO, Vec3::ZERO, 0.005);
-    let mut mesh: Mesh = Mesh::new(origin, Mat3::IDENTITY, material, false);
+    let material: Material = Material::new(Vec3::ZERO, Vec3::ONE * 0.01, 0.005);
+    let mut mesh: Mesh = Mesh::new(origin, Mat3::IDENTITY, material, true);
 
     // vertices + normals + uvs
     // lat = rings (pole to pole), long = slices around

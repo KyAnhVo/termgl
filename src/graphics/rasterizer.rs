@@ -270,7 +270,11 @@ impl Rasterizer {
         )
         .xyz();
 
-        shader.shade_point_phong(pos, n, mesh.material, kd, camera)
+        if mesh.no_shade {
+            kd
+        } else {
+            shader.shade_point_phong(pos, n, mesh.material, kd, camera)
+        }
     }
 
     fn rasterize_triangle_gouraud(
@@ -364,6 +368,9 @@ impl Rasterizer {
                 raster_vertices.2.color,
             ),
         };
+        if mesh.no_shade {
+            return vertices_kd;
+        }
         let vertices_shaded_color: (Vec3, Vec3, Vec3) = (
             shader.shade_point_phong(
                 vertices.0.pos.xyz(),
