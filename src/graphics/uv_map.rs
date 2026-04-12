@@ -2,7 +2,7 @@ use glam::{Mat3, Vec2, Vec3, Vec3Swizzles};
 use image::{ImageReader, RgbImage};
 
 /// A height map that uses a UV map to sample height values.
-/// This implements the parallaxed UV interpolation algorithm,
+/// This implements the parallax UV interpolation algorithm,
 /// so use this before using the other uv maps.
 pub struct HeightMap {
     map: UVMap,
@@ -17,8 +17,8 @@ impl HeightMap {
         }
     }
 
-    /// Interpolates the parallaxed UV coordinates for the given UV and view direction.
-    pub fn interpolate_parallaxed_uv(&self, uv: Vec2, view_dir: Vec3) -> Vec2 {
+    /// Interpolates the parallax UV coordinates for the given UV and view direction.
+    pub fn interpolate_parallax_uv(&self, uv: Vec2, view_dir: Vec3) -> Vec2 {
         let color: Vec3 = self.map.interpolate(uv);
         let height: f32 = color.x;
         uv - view_dir.xy() / view_dir.z * (height * self.height_scale)
@@ -68,7 +68,7 @@ impl NormalMap {
 
         // create tbn, the tangent basis matrix
         let t_pre_gram_schmidt: Vec3 = Vec3::new(tx, ty, tz);
-        let n: Vec3 = (e1.cross(e2)).normalize();
+        let n: Vec3 = e1.cross(e2).normalize();
         let t: Vec3 = (t_pre_gram_schmidt - n * n.dot(t_pre_gram_schmidt)).normalize();
         let b: Vec3 = n.cross(t).normalize();
         let tbn: Mat3 = Mat3::from_cols(t, b, n);
@@ -104,9 +104,9 @@ impl UVMap {
         let (dim_u, dim_v): (f32, f32) = (udim_u as f32, udim_v as f32);
         let (u, v): (f32, f32) = (uv.x * dim_u, uv.y * dim_v);
         let (u_low, v_low): (f32, f32) = (u.floor(), v.floor());
-        let (u_high, v_high): (f32, f32) = (u_low + 1.0, v_low + 1.0);
+        let (u_high, v_high): (f32, f32) = ((u_low + 1.0).min(dim_u - 1.0), (v_low + 1.0).min(dim_v - 1.0));
 
-        // tu for interpolating u pos, tv for interpolating v pos
+        // tu for interpolating u pos, tv for interpolating v pos,
         // t on low side, 1.0 - t on high side
         let (tu, tv): (f32, f32) = (u - u_low, v - v_low);
 

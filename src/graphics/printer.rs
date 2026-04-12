@@ -56,7 +56,7 @@ impl Printer {
                     PrinterType::Ascii => {
                         // calculate avr color by add then div 2 will overflow,
                         // so we do this. Might induce error, but it's at most 2,
-                        // so we dont really care.
+                        // so we don't really care.
                         let avr_color: Vec3 = (first_color + second_color) / 2.0;
                         let luminance: f32 = avr_color.element_sum() / 3.0;
                         let ramp_ind: usize = (luminance * (Self::RAMP.len() - 1) as f32) as usize;

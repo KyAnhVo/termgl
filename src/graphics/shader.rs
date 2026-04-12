@@ -27,7 +27,7 @@ impl Shader {
         normal: Vec4,
         material: Material,
         color: Vec3,
-        cam: Camera,
+        cam: &Camera,
     ) -> Vec3 {
         let mut final_color: Vec3 = Vec3::ZERO;
         for light in &self.point_light_sources {

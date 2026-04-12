@@ -84,7 +84,7 @@ impl Pipeline3D {
         }
 
         self.rasterizer
-            .rasterize_mesh(mesh, &self.shader, self.camera, shading_mode);
+            .rasterize_mesh(mesh, &self.shader, &self.camera, shading_mode);
     }
 
     /// Print the buffer into the screen

@@ -40,10 +40,10 @@ pub struct Mesh {
     /// Used for RasterVertex after projection
     pub raster_vertices: Vec<RasterVertex>,
 
-    /// orthogornals of the vertices in object space.
+    /// orthogonal of the vertices in object space.
     pub normals: Vec<Vec4>,
 
-    /// vertex orthogornals of vertices in world space.
+    /// vertex orthogonal of vertices in world space.
     pub normals_world_space: Vec<Vec4>,
 
     /// uv coordinates
@@ -72,8 +72,8 @@ pub struct Mesh {
     pub no_shade: bool,
 
     /// finalize normals essentially transforms the normal to world space.
-    /// So if  no movement/spinning, it still is in that same position.
-    /// Thus we use this var to indicate if it has changed.
+    /// So if  no movement/spinning, it still is in that same position,
+    /// thus we use this var to indicate if it has changed.
     no_change: bool,
 }
 
@@ -139,35 +139,38 @@ impl Mesh {
         self.triangles.append(&mut vec![a, b, c]);
     }
 
-    /// Normalizes the vertex orthogonals after all triangles have been added.
+    /// Finalize the mesh before rendering. Must call.
     pub fn finalize_mesh(&mut self) {
         if self.no_change {
             return;
         }
 
         self.normals_world_space.clear();
-        self.vertices_world_space.clear();
         let m_to_world_space: Mat4 = self.m_to_world_space();
         for i in 0..self.normals.len() {
-            // orthogornal
+            // orthogonal
             self.normals_world_space
                 .push((m_to_world_space * self.normals[i]).normalize());
-
-            // vertex
-            let mut v_world_space: Vertex = self.vertices[i];
-            v_world_space.pos = m_to_world_space * v_world_space.pos;
-            self.vertices_world_space.push(v_world_space);
         }
+
+        let m_to_world_space: Mat4 = self.m_to_world_space();
+        self.vertices_world_space.clear();
+        for i in 0..self.vertices.len() {
+            let mut vertex: Vertex = self.vertices[i].clone();
+            vertex.pos = m_to_world_space * vertex.pos;
+            self.vertices_world_space.push(vertex);
+        }
+
         self.no_change = true;
     }
 
     /// Returns the correct uv that is based on the height map, if one exists.
     /// Otherwise, returns the original uv.
-    pub fn get_parallaxed_uv(&self, uv: Vec2, cam: &Camera) -> Vec2 {
+    pub fn get_parallax_uv(&self, uv: Vec2, cam: &Camera) -> Vec2 {
         match self.height_map {
             Some(ref height_map) => {
-                let view_dir: Vec3 = cam.pos.xyz() / cam.pos.z - self.origin;
-                height_map.interpolate_parallaxed_uv(uv, view_dir)
+                let view_dir: Vec3 = cam.pos.xyz() / cam.pos.w - self.origin;
+                height_map.interpolate_parallax_uv(uv, view_dir)
             }
             None => uv,
         }

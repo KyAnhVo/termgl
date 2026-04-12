@@ -1,8 +1,5 @@
 use crate::graphics::{
-    mesh::Mesh,
-    options::LightSourceShadingMode,
-    projection::Camera,
-    vertex::{Material, Vertex},
+    mesh::Mesh, options::LightSourceShadingMode, projection::Camera, vertex::Material,
 };
 use glam::{Vec3, Vec4, Vec4Swizzles};
 
@@ -57,44 +54,6 @@ impl PointLightSource {
         }
     }
 
-    /// for Gouraud shading.
-    /// These datas can be gathered simply from the Mesh object.
-    pub fn shade_vertex(
-        &self,
-        vertex: Vertex,
-        vertex_color: Vec3,
-        material: Material,
-        normal: Vec4,
-        cam: Camera,
-    ) -> Vec3 {
-        // uses triangle.a as ref for most things, assume all 3 are equivalent
-        let kd: Vec3 = vertex_color;
-        let ks: Vec3 = material.ks;
-        let ka: Vec3 = material.ka;
-        let p: f32 = material.p;
-
-        let n: Vec3 = normal.xyz();
-        let v: Vec3 = (cam.pos.xyz() - vertex.pos.xyz()).normalize();
-        let l_unnorm: Vec3 = self.pos - vertex.pos.xyz();
-        let r2: f32 = l_unnorm.length_squared();
-        let l: Vec3 = l_unnorm.normalize();
-        let h = (v + l).normalize();
-
-        let ia: Vec3 = self.ambient_intensity;
-        let id: Vec3 = self.diffuse_intensity;
-        let is: Vec3 = self.specular_intensity;
-        let ambient_term: Vec3 = ka * ia;
-        let diffuse_term: Vec3 = kd * (id / r2) * (n.dot(l)).max(0.0);
-        let specular_term: Vec3 = ks * (is / r2) * (n.dot(h)).max(0.0).powf(p);
-
-        let color: Vec3 = ambient_term + diffuse_term + specular_term;
-        Vec3::new(
-            color.x.clamp(0.0, 1.0),
-            color.y.clamp(0.0, 1.0),
-            color.z.clamp(0.0, 1.0),
-        )
-    }
-
     /// Shades a point given position, normal, material, and original color
     pub fn shade(
         &self,
@@ -102,7 +61,7 @@ impl PointLightSource {
         normal: Vec4,
         material: Material,
         color: Vec3,
-        cam: Camera,
+        cam: &Camera,
     ) -> Vec3 {
         let kd: Vec3 = color;
         let ks: Vec3 = material.ks;
@@ -111,9 +70,9 @@ impl PointLightSource {
 
         let n: Vec3 = normal.xyz();
         let v: Vec3 = (cam.pos.xyz() - pos).normalize();
-        let l_unnorm: Vec3 = self.pos - pos;
-        let l: Vec3 = l_unnorm.normalize();
-        let r2: f32 = l_unnorm.length_squared();
+        let l_prenormalized: Vec3 = self.pos - pos;
+        let l: Vec3 = l_prenormalized.normalize();
+        let r2: f32 = l_prenormalized.length_squared();
         let h = (v + l).normalize();
 
         let ia: Vec3 = self.ambient_intensity;
@@ -121,8 +80,8 @@ impl PointLightSource {
         let is: Vec3 = self.specular_intensity;
 
         let ambient_term: Vec3 = ka * ia;
-        let diffuse_term: Vec3 = kd * (id / r2) * (n.dot(l)).max(0.0);
-        let specular_term: Vec3 = ks * (is / r2) * (n.dot(h)).max(0.0).powf(p);
+        let diffuse_term: Vec3 = kd * (id / r2) * n.dot(l).max(0.0);
+        let specular_term: Vec3 = ks * (is / r2) * n.dot(h).max(0.0).powf(p);
 
         let color: Vec3 = ambient_term + diffuse_term + specular_term;
         Vec3::new(
