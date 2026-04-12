@@ -5,8 +5,6 @@ pub enum ShadingMode {
     Gouraud,
     /// interpolate normal into pixel, calculate pixel color
     Phong,
-    /// use the first vertex's (or the average) color
-    Flat,
 }
 
 /// shading modes for light source
@@ -14,6 +12,6 @@ pub enum ShadingMode {
 pub enum LightSourceShadingMode {
     /// Lambertian emitter/scatterer has uniform look from all sides
     Lambertian,
-    /// use n.dot(v) for surface normal and view normal, sometimes preffered
+    /// use n.dot(v) for surface normal and view normal, sometimes preferred
     LambertianCosineLaw,
 }

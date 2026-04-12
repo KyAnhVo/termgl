@@ -68,29 +68,24 @@ impl Pipeline3D {
 
     /// Render the meshes into rasterizer's buffer
     pub fn render_mesh(&mut self, mesh: &mut Mesh) {
+        self.rasterizer.clear();
         let shading_mode: ShadingMode = self.shading_mode;
 
         // finalize mesh normals and vertices (to world space)
-        mesh.finalize_normals();
+        mesh.finalize_mesh();
 
         // transform to ndc-space
         let m_obj_to_ndc: Mat4 = self.camera.m_perspective(0.1, 10000000.0)
             * self.camera.m_view()
             * mesh.m_to_world_space();
-        mesh.projected_vao.clear();
-        for v in &mesh.vao {
-            mesh.projected_vao
+        mesh.raster_vertices.clear();
+        for v in &mesh.vertices {
+            mesh.raster_vertices
                 .push(RasterVertex::from_world_view(*v, m_obj_to_ndc));
         }
 
-        // shade vertices for Gouraud shading
-        if shading_mode == ShadingMode::Gouraud || shading_mode == ShadingMode::Flat {
-            self.shader.shade_mesh_gouraud(mesh, self.camera);
-        }
-
-        let is_phong: bool = (shading_mode == ShadingMode::Phong) && !mesh.no_shade;
         self.rasterizer
-            .rasterize_mesh(mesh, &self.shader, self.camera, is_phong);
+            .rasterize_mesh(mesh, &self.shader, &self.camera, shading_mode);
     }
 
     /// Print the buffer into the screen

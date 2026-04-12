@@ -1,8 +1,29 @@
-use crate::graphics::vertex::{Material, RasterVertex, Vertex};
-use glam::{Mat3, Mat4, Vec3, Vec4, Vec4Swizzles};
+use crate::graphics::{
+    projection::Camera,
+    uv_map::{HeightMap, NormalMap, UVMap},
+    vertex::{Material, RasterVertex, Vertex},
+};
+use glam::{Mat3, Mat4, Vec2, Vec3, Vec4, Vec4Swizzles};
+
+/// a 3-tuple of indices of vertex, normal, and uv
+#[derive(Clone, Copy)]
+pub struct MeshVertexIndices {
+    pub vertex_ind: usize,
+    pub normal_ind: usize,
+    pub uv_ind: usize,
+}
+
+impl MeshVertexIndices {
+    pub fn new(vertex_ind: usize, normal_ind: usize, uv_ind: usize) -> Self {
+        Self {
+            vertex_ind,
+            normal_ind,
+            uv_ind,
+        }
+    }
+}
 
 /// An object to be rendered, represented by an EBO and a VAO
-#[derive(Clone)]
 pub struct Mesh {
     /// The origin of the mesh in object space
     origin: Vec3,
@@ -11,36 +32,48 @@ pub struct Mesh {
     orthonormal_basis: Mat3,
 
     /// The vertices in the VAO is in object space
-    pub vao: Vec<Vertex>,
+    pub vertices: Vec<Vertex>,
 
     /// The vertices in the VAO but in world space
-    pub vao_world_space: Vec<Vertex>,
+    pub vertices_world_space: Vec<Vertex>,
+
+    /// Used for RasterVertex after projection
+    pub raster_vertices: Vec<RasterVertex>,
+
+    /// orthogonal of the vertices in object space.
+    pub normals: Vec<Vec4>,
+
+    /// vertex orthogonal of vertices in world space.
+    pub normals_world_space: Vec<Vec4>,
+
+    /// uv coordinates
+    pub uv: Vec<Vec2>,
 
     /// Each element in the EBO maps to a vertex in
     /// the VAO, and each 3 elements 3x, 3x+1, 3x+2 in
     /// the EBO creates a triangle.
     /// Note: ebo.size() % 3 == 0 must remain true.
-    pub ebo: Vec<usize>,
-
-    /// Used for RasterVertex after projection
-    pub projected_vao: Vec<RasterVertex>,
-
-    /// orthogornals of the vertices in object space.
-    pub vertex_orthogonals: Vec<Vec4>,
-
-    /// vertex orthogornals of vertices in world space.
-    pub v_orthogonals_world_space: Vec<Vec4>,
+    pub triangles: Vec<MeshVertexIndices>,
 
     /// As of this version, expect the mesh to remain the same material
     pub material: Material,
+
+    ///texture uv map
+    pub texture_map: Option<UVMap>,
+
+    /// height uv map
+    pub height_map: Option<HeightMap>,
+
+    /// normal uv map
+    pub normal_map: Option<NormalMap>,
 
     /// Some objects might not want to be shaded (e.g. background image,
     /// 2D game with no shading, or a light source)
     pub no_shade: bool,
 
     /// finalize normals essentially transforms the normal to world space.
-    /// So if  no movement/spinning, it still is in that same position.
-    /// Thus we use this var to indicate if it has changed.
+    /// So if  no movement/spinning, it still is in that same position,
+    /// thus we use this var to indicate if it has changed.
     no_change: bool,
 }
 
@@ -49,13 +82,17 @@ impl Mesh {
         Self {
             origin,
             orthonormal_basis,
-            vao: vec![],
-            vao_world_space: vec![],
-            ebo: vec![],
-            projected_vao: vec![],
-            vertex_orthogonals: vec![],
-            v_orthogonals_world_space: vec![],
+            vertices: vec![],
+            vertices_world_space: vec![],
+            raster_vertices: vec![],
+            normals: vec![],
+            normals_world_space: vec![],
+            uv: vec![],
+            triangles: vec![],
             material,
+            texture_map: None,
+            height_map: None,
+            normal_map: None,
             no_shade,
             no_change: false,
         }
@@ -63,55 +100,95 @@ impl Mesh {
 
     /// Adds a vertex to the mesh.
     pub fn add_vertex(&mut self, v: Vertex) {
-        self.vao.push(v);
-        self.vertex_orthogonals.push(Vec4::ZERO);
+        self.vertices.push(v);
+        self.no_change = false;
+    }
+
+    pub fn add_normal(&mut self, normal: Vec4) {
+        self.normals.push(normal);
+        self.no_change = false;
+    }
+
+    pub fn add_uv(&mut self, uv: Vec2) {
+        self.uv.push(uv);
     }
 
     /// Adds a triangle to the mesh by pushing its vertex indices to the EBO.
     ///
-    pub fn add_triangle(&mut self, a: usize, b: usize, c: usize) {
-        let v_count: usize = self.vao.len();
+    pub fn add_triangle(
+        &mut self,
+        a: MeshVertexIndices,
+        b: MeshVertexIndices,
+        c: MeshVertexIndices,
+    ) {
+        let vertices_len: usize = self.vertices.len();
+        let uv_len: usize = self.uv.len();
+        let normals_len: usize = self.normals.len();
         assert!(
-            a < v_count && b < v_count && c < v_count,
-            "triangle index out of bound"
+            a.vertex_ind < vertices_len
+                && b.vertex_ind < vertices_len
+                && c.vertex_ind < vertices_len,
         );
-        self.ebo.push(a);
-        self.ebo.push(b);
-        self.ebo.push(c);
+        assert!(a.uv_ind < uv_len && b.uv_ind < uv_len && c.uv_ind < uv_len,);
+        assert!(
+            a.normal_ind < normals_len && b.normal_ind < normals_len && c.normal_ind < normals_len,
+        );
 
-        let va: Vec4 = self.vao[a].pos;
-        let vb: Vec4 = self.vao[b].pos;
-        let vc: Vec4 = self.vao[c].pos;
-
-        let ab: Vec4 = vb - va;
-        let ac: Vec4 = vc - va;
-        let n: Vec4 = ab.xyz().cross(ac.xyz()).extend(0.0);
-
-        self.vertex_orthogonals[a] += n;
-        self.vertex_orthogonals[b] += n;
-        self.vertex_orthogonals[c] += n;
+        // pretty much assume the compiler will optimize this
+        // with even the lowest level of optimization
+        self.triangles.append(&mut vec![a, b, c]);
     }
 
-    /// Normalizes the vertex orthogonals after all triangles have been added.
-    pub fn finalize_normals(&mut self) {
+    /// Finalize the mesh before rendering. Must call.
+    pub fn finalize_mesh(&mut self) {
         if self.no_change {
             return;
         }
 
-        self.v_orthogonals_world_space.clear();
-        self.vao_world_space.clear();
+        self.normals_world_space.clear();
         let m_to_world_space: Mat4 = self.m_to_world_space();
-        for i in 0..self.vertex_orthogonals.len() {
-            // orthogornal
-            self.v_orthogonals_world_space
-                .push((m_to_world_space * self.vertex_orthogonals[i]).normalize());
-
-            // vertex
-            let mut v_world_space: Vertex = self.vao[i];
-            v_world_space.pos = m_to_world_space * v_world_space.pos;
-            self.vao_world_space.push(v_world_space);
+        for i in 0..self.normals.len() {
+            // orthogonal
+            self.normals_world_space
+                .push((m_to_world_space * self.normals[i]).normalize());
         }
+
+        let m_to_world_space: Mat4 = self.m_to_world_space();
+        self.vertices_world_space.clear();
+        for i in 0..self.vertices.len() {
+            let mut vertex: Vertex = self.vertices[i].clone();
+            vertex.pos = m_to_world_space * vertex.pos;
+            self.vertices_world_space.push(vertex);
+        }
+
         self.no_change = true;
+    }
+
+    /// Returns the correct uv that is based on the height map, if one exists.
+    /// Otherwise, returns the original uv.
+    pub fn get_parallax_uv(&self, uv: Vec2, cam: &Camera) -> Vec2 {
+        match self.height_map {
+            Some(ref height_map) => {
+                let view_dir: Vec3 = cam.pos.xyz() / cam.pos.w - self.origin;
+                height_map.interpolate_parallax_uv(uv, view_dir)
+            }
+            None => uv,
+        }
+    }
+
+    /// adds texture map, panics if path is invalid
+    pub fn add_texture_map(&mut self, path: &str) {
+        self.texture_map = Some(UVMap::new(path));
+    }
+
+    /// adds normal map, panics if path is invalid
+    pub fn add_normal_map(&mut self, path: &str) {
+        self.normal_map = Some(NormalMap::new(path));
+    }
+
+    /// adds height map, panics if path is invalid
+    pub fn add_height_map(&mut self, path: &str, height_scale: f32) {
+        self.height_map = Some(HeightMap::new(path, height_scale));
     }
 
     /// return the matrix to transform vertex to world space
@@ -135,7 +212,7 @@ impl Mesh {
         self.no_change = false;
     }
 
-    /// moves the object/mesh's origin
+    /// moves the object/mesh's origin by a specific vector (origin = origin + movement)
     pub fn translate(&mut self, movement: Vec3) {
         if movement == Vec3::ZERO {
             return;
@@ -153,67 +230,9 @@ impl Mesh {
         self.no_change = false;
     }
 
+    /// moves the object/mesh's origin to a specific position in world space.
     pub fn move_origin_to(&mut self, to: Vec3) {
         self.origin = to;
         self.no_change = false;
-    }
-
-    // Utility functions
-
-    /// Make mesh a sphere with radius centered around the mesh's origin
-    pub fn create_sphere(
-        &mut self,
-        longtitudes: usize,
-        latitudes: usize,
-        radius: f32,
-        color: Vec3,
-    ) {
-        self.vao.clear();
-        self.ebo.clear();
-        self.vertex_orthogonals.clear();
-
-        let sector_step = 2.0 * std::f32::consts::PI / longtitudes as f32;
-        let stack_step = std::f32::consts::PI / latitudes as f32;
-
-        for i in 0..=latitudes {
-            let stack_angle = std::f32::consts::PI / 2.0 - i as f32 * stack_step;
-            let xy = radius * stack_angle.cos();
-            let z = radius * stack_angle.sin();
-
-            for j in 0..=longtitudes {
-                let sector_angle = j as f32 * sector_step;
-
-                let x = xy * sector_angle.cos();
-                let y = xy * sector_angle.sin();
-
-                let pos = Vec3::new(x, y, z);
-
-                self.vao.push(Vertex::new(pos, color));
-
-                self.vertex_orthogonals.push(pos.extend(0.0).normalize());
-            }
-        }
-
-        // Generate EBO (Indices)
-        for i in 0..latitudes {
-            let mut k1 = i * (longtitudes + 1);
-            let mut k2 = k1 + longtitudes + 1;
-
-            for _ in 0..longtitudes {
-                if i != 0 {
-                    self.ebo.push(k1);
-                    self.ebo.push(k2);
-                    self.ebo.push(k1 + 1);
-                }
-
-                if i != (latitudes - 1) {
-                    self.ebo.push(k1 + 1);
-                    self.ebo.push(k2);
-                    self.ebo.push(k2 + 1);
-                }
-                k1 += 1;
-                k2 += 1;
-            }
-        }
     }
 }
