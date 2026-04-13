@@ -1,5 +1,6 @@
 use glam::{Mat3, Vec2, Vec3};
-use std::{f32::consts::PI};
+use std::env;
+use std::f32::consts::PI;
 use std::thread::sleep;
 use std::time;
 use termgl::{
@@ -8,10 +9,17 @@ use termgl::{
 };
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    if args.len() != 2 {
+        eprintln!("Usage: planet <planet>");
+        return;
+    }
+    let planet = &args[1].to_ascii_lowercase();
+    let planet_trimmed = planet.trim();
+
     let mut mesh: Mesh = create_sphere(0.5, Vec3::Z, 20, 20);
-    
     let load_texture_start = time::Instant::now();
-    mesh.add_texture_map("assets/earth.jpg");
+    mesh.add_texture_map(&format!("assets/{}.jpg", planet_trimmed));
     let load_texture_duration = load_texture_start.elapsed();
     eprintln!("Texture load time: {}ms", load_texture_duration.as_millis());
 
