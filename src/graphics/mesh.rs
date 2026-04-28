@@ -4,6 +4,7 @@ use crate::graphics::{
     vertex::{Material, RasterVertex, Vertex},
 };
 use glam::{Mat3, Mat4, Vec2, Vec3, Vec4, Vec4Swizzles};
+use std::f32::consts::PI;
 
 /// a 3-tuple of indices of vertex, normal, and uv
 #[derive(Clone, Copy)]
@@ -115,12 +116,7 @@ impl Mesh {
 
     /// Adds a triangle to the mesh by pushing its vertex indices to the EBO.
     ///
-    pub fn add_triangle(
-        &mut self,
-        a: VertexIndices,
-        b: VertexIndices,
-        c: VertexIndices,
-    ) {
+    pub fn add_triangle(&mut self, a: VertexIndices, b: VertexIndices, c: VertexIndices) {
         let vertices_len: usize = self.vertices.len();
         let uv_len: usize = self.uv.len();
         let normals_len: usize = self.normals.len();
@@ -234,5 +230,63 @@ impl Mesh {
     pub fn move_origin_to(&mut self, to: Vec3) {
         self.origin = to;
         self.no_change = false;
+    }
+}
+
+impl Mesh {
+    pub fn create_sphere(
+        rad: f32,
+        origin: Vec3,
+        material: Material,
+        color: Vec3,
+        lat: usize,
+        long: usize,
+    ) -> Mesh {
+        let mut mesh: Mesh = Mesh::new(origin, Mat3::IDENTITY, material, false);
+
+        // vertices + normals + uvs
+        // lat = rings (pole to pole), long = slices around
+        for i in 0..=lat {
+            let phi: f32 = PI * i as f32 / lat as f32; // [0, PI]
+            for j in 0..=long {
+                let theta: f32 = 2.0 * PI * j as f32 / long as f32; // [0, 2PI]
+
+                let x: f32 = rad * phi.sin() * theta.cos();
+                let y: f32 = rad * phi.cos();
+                let z: f32 = rad * phi.sin() * theta.sin();
+
+                let pos: Vec3 = Vec3::new(x, y, z);
+                let normal: Vec3 = pos.normalize(); // outward normal
+
+                let u: f32 = j as f32 / long as f32; // [0, 1] longitude
+                let v: f32 = i as f32 / lat as f32; // [0, 1] latitude
+
+                mesh.add_vertex(Vertex::new(pos, color));
+                mesh.add_normal(normal.extend(0.0));
+                mesh.add_uv(Vec2::new(u, v));
+            }
+        }
+
+        // triangles
+        // each quad (i, j) -> (i+1, j) -> (i, j+1) -> (i+1, j+1)
+        // ring i has (long+1) verts
+        for i in 0..lat {
+            for j in 0..long {
+                let row: usize = long + 1;
+                let tl: usize = i * row + j;
+                let tr: usize = tl + 1;
+                let bl: usize = tl + row;
+                let br: usize = bl + 1;
+
+                let mk = |vi: usize| VertexIndices::new(vi, vi, vi);
+
+                // upper triangle of quad
+                mesh.add_triangle(mk(tl), mk(bl), mk(tr));
+                // lower triangle of quad
+                mesh.add_triangle(mk(tr), mk(bl), mk(br));
+            }
+        }
+
+        mesh
     }
 }
