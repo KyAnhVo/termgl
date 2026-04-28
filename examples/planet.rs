@@ -41,7 +41,7 @@ fn main() {
     );
 
     let shading_mode: ShadingMode = ShadingMode::Phong;
-    let printer_type: PrinterType = PrinterType::Color;
+    let printer_type: PrinterType = PrinterType::Ascii;
 
     let mut pipeline: Pipeline3D = Pipeline3D::new(
         Vec3::new(0.0, 0.0, 0.07),
