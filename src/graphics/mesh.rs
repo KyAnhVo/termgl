@@ -80,10 +80,10 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    pub fn new(origin: Vec3, orthonormal_basis: Mat3, material: Material, no_shade: bool) -> Self {
+    pub fn new(material: Material, no_shade: bool) -> Self {
         Self {
-            origin,
-            orthonormal_basis,
+            origin: Vec3::ZERO,
+            orthonormal_basis: Mat3::IDENTITY,
             vertices: vec![],
             vertices_world_space: vec![],
             raster_vertices: vec![],
@@ -98,6 +98,14 @@ impl Mesh {
             no_shade,
             no_change: false,
         }
+    }
+
+    pub fn get_origin(&self) -> Vec3 {
+        self.origin
+    }
+
+    pub fn get_orthonormal_basis(&self) -> Mat3 {
+        self.orthonormal_basis
     }
 
     /// Adds a vertex to the mesh.
@@ -243,7 +251,8 @@ impl Mesh {
         lat: usize,
         long: usize,
     ) -> Mesh {
-        let mut mesh: Mesh = Mesh::new(origin, Mat3::IDENTITY, material, false);
+        let mut mesh: Mesh = Mesh::new(material, false);
+        mesh.move_origin_to(origin);
 
         // vertices + normals + uvs
         // lat = rings (pole to pole), long = slices around

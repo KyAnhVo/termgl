@@ -1,4 +1,4 @@
-use glam::{Mat3, Vec2, Vec3};
+use glam::{Mat3, Vec3};
 use std::env;
 use std::f32::consts::PI;
 use std::thread::sleep;

@@ -4,14 +4,18 @@ use glam::{Mat4, Vec2, Vec3, Vec3Swizzles, Vec4, Vec4Swizzles};
 
 #[derive(Clone, Copy)]
 pub struct Material {
-    pub ks: Vec3,
-    pub ka: Vec3,
-    pub p: f32,
+    pub specular_constant: Vec3,
+    pub ambient_constant: Vec3,
+    pub specular_exponent: f32,
 }
 
 impl Material {
-    pub fn new(ks: Vec3, ka: Vec3, p: f32) -> Self {
-        Self { ks, ka, p }
+    pub fn new(specular_constant: Vec3, ambient_constant: Vec3, specular_exponent: f32) -> Self {
+        Self {
+            specular_constant,
+            ambient_constant,
+            specular_exponent,
+        }
     }
 }
 

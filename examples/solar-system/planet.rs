@@ -1,4 +1,4 @@
-use glam::{Mat3, Mat4, Vec3};
+use glam::{Mat3, Vec3};
 use termgl::graphics::{Material, Mesh};
 
 use rand::random_range;
@@ -48,7 +48,7 @@ impl Planet {
         let original_orientation: Mat3 = default_rot * Mat3::IDENTITY;
 
         let material: Material = Material::new(Vec3::ONE, Vec3::ONE * 0.1, 200.0);
-        let mut mesh: Mesh = Mesh::new(original_pos, original_orientation, material, is_sun);
+        let mut mesh: Mesh = Mesh::create_sphere(rad, original_pos, material, Vec3::ONE, 16, 16);
         mesh.add_texture_map(&format!("assets/{}.jpg", name));
 
         Self {
