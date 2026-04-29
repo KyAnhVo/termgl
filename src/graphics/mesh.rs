@@ -25,6 +25,7 @@ impl VertexIndices {
 }
 
 /// An object to be rendered, represented by an EBO and a VAO
+#[derive(Clone)]
 pub struct Mesh {
     /// The origin of the mesh in object space
     origin: Vec3,

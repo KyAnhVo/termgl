@@ -4,6 +4,7 @@ use image::{ImageReader, RgbImage};
 /// A height map that uses a UV map to sample height values.
 /// This implements the parallax UV interpolation algorithm,
 /// so use this before using the other uv maps.
+#[derive(Clone)]
 pub struct HeightMap {
     map: UVMap,
     pub height_scale: f32,
@@ -26,6 +27,7 @@ impl HeightMap {
 }
 
 /// A normal map that uses a UV map to sample normal values.
+#[derive(Clone)]
 pub struct NormalMap {
     /// the uv map used to sample normals
     map: UVMap,
@@ -79,6 +81,7 @@ impl NormalMap {
 
 /// A UV map that uses bilinear interpolation to sample colors.
 /// By default, use this for the texture map.
+#[derive(Clone)]
 pub struct UVMap {
     pub buff: RgbImage,
 }
@@ -104,7 +107,10 @@ impl UVMap {
         let (dim_u, dim_v): (f32, f32) = (udim_u as f32, udim_v as f32);
         let (u, v): (f32, f32) = (uv.x * dim_u, uv.y * dim_v);
         let (u_low, v_low): (f32, f32) = (u.floor().min(dim_u - 1.0), v.floor().min(dim_v - 1.0));
-        let (u_high, v_high): (f32, f32) = ((u_low + 1.0).min(dim_u - 1.0), (v_low + 1.0).min(dim_v - 1.0));
+        let (u_high, v_high): (f32, f32) = (
+            (u_low + 1.0).min(dim_u - 1.0),
+            (v_low + 1.0).min(dim_v - 1.0),
+        );
 
         // tu for interpolating u pos, tv for interpolating v pos,
         // t on low side, 1.0 - t on high side

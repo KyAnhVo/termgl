@@ -1,21 +1,31 @@
 // the enums
 pub mod options;
+pub use options::{LightSourceShadingMode, ShadingMode};
 
 // the typical shapes
-pub mod mesh;
-pub mod uv_map;
-pub mod vertex;
+mod mesh;
+mod uv_map;
+mod vertex;
+pub use mesh::{Mesh, VertexIndices};
+pub use uv_map::{HeightMap, NormalMap, UVMap};
+pub use vertex::{Material, Vertex};
 
 // the spaces
-pub mod projection;
+mod projection;
+pub use projection::Camera;
 
 // the lighting
-pub mod point_light_source;
-pub mod shader;
+mod point_light_source;
+mod shader;
+pub use point_light_source::PointLightSource;
+pub use shader::Shader;
 
 // to the screen
-pub mod printer;
-pub mod rasterizer;
+mod printer;
+mod rasterizer;
+pub use printer::{Printer, PrinterType};
+pub use rasterizer::Rasterizer;
 
 // the pipeline
-pub mod pipeline3d;
+mod pipeline3d;
+pub use pipeline3d::Pipeline3D;

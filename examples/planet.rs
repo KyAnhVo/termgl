@@ -3,9 +3,9 @@ use std::env;
 use std::f32::consts::PI;
 use std::thread::sleep;
 use std::time;
-use termgl::{
+use termgl::graphics::{
     Camera, LightSourceShadingMode, Material, Mesh, Pipeline3D, PointLightSource, PrinterType,
-    ShadingMode, Vertex, VertexIndices,
+    ShadingMode,
 };
 
 fn main() {
