@@ -1,7 +1,7 @@
 use glam::{Mat3, Mat4, Vec3};
 use termgl::graphics::{Material, Mesh};
 
-use rand::Rng;
+use rand::random_range;
 use std::f32::consts::PI;
 
 struct Planet {
@@ -42,7 +42,7 @@ impl Planet {
         orbital_velocity: f32,
         is_sun: bool,
     ) -> Self {
-        let random_num: f32 = rand::random_range(0..100) as f32 / 100.0;
+        let random_num: f32 = random_range(0..100) as f32 / 100.0;
         let default_rot: Mat3 = Mat3::from_rotation_z(2.0 * PI * random_num);
         let original_pos: Vec3 = default_rot * Vec3::ONE * rad;
         let original_orientation: Mat3 = default_rot * Mat3::IDENTITY;
