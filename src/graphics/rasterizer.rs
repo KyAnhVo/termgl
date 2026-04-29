@@ -250,16 +250,7 @@ impl Rasterizer {
         // else we interpolate color.
         let kd: Vec3 = match &mesh.texture_map {
             Some(texture_map) => texture_map.interpolate(uv),
-            None => RasterVertex::interpolate_color(
-                raster_vertices,
-                (
-                    raster_vertices.0.color,
-                    raster_vertices.1.color,
-                    raster_vertices.2.color,
-                ),
-                barycentric_coordinate,
-                p_inv_w,
-            ),
+            None => mesh.default_color,
         };
 
         let pos: Vec3 = RasterVertex::interpolate_position(
@@ -362,11 +353,7 @@ impl Rasterizer {
                 texture_map.interpolate(uvs_parallax.1),
                 texture_map.interpolate(uvs_parallax.2),
             ),
-            None => (
-                raster_vertices.0.color,
-                raster_vertices.1.color,
-                raster_vertices.2.color,
-            ),
+            None => (mesh.default_color, mesh.default_color, mesh.default_color),
         };
         if mesh.no_shade {
             return vertices_kd;

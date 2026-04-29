@@ -9,18 +9,10 @@ use termgl::graphics::{
 };
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        eprintln!("Usage: planet <planet>");
-        return;
-    }
-    let planet = &args[1].to_ascii_lowercase();
-    let planet_trimmed = planet.trim();
-
     // Mesh with texture map
-    let material: Material = Material::new(Vec3::ONE * 0.1, Vec3::ONE * 0.01, 10000.0);
+    let material: Material = Material::new(Vec3::ONE * 0.1, Vec3::ONE * 0.01, 500.0);
     let mut mesh: Mesh = Mesh::create_sphere(0.5, Vec3::Z, material, Vec3::ONE, 20, 20);
-    mesh.add_texture_map(&format!("examples/assets/{}.jpg", planet_trimmed));
+    mesh.add_texture_map("examples/assets/earth_bw.jpg");
 
     let light: PointLightSource = PointLightSource::new(
         Vec3::new(1.0, 0.0, -0.5) * 0.5,

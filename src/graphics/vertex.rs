@@ -23,20 +23,12 @@ impl Material {
 pub struct Vertex {
     // position in world view (w = 1.0)
     pub pos: Vec4,
-
-    // color of vertex, color = [0,1]x[0,1]x[0,1]
-    pub color: Vec3,
 }
 
 impl Vertex {
-    pub fn new(pos: Vec3, color: Vec3) -> Self {
-        assert!(0.0 <= color.x && color.x <= 1.0);
-        assert!(0.0 <= color.y && color.y <= 1.0);
-        assert!(0.0 <= color.z && color.z <= 1.0);
-
+    pub fn new(pos: Vec3) -> Self {
         Self {
             pos: pos.extend(1.0),
-            color,
         }
     }
 }
@@ -45,21 +37,19 @@ impl Vertex {
 #[derive(Clone, Copy)]
 pub struct RasterVertex {
     pub pos: Vec3,
-    pub color: Vec3,
     pub inv_w: f32,
 }
 
 impl RasterVertex {
-    pub fn new(pos: Vec4, color: Vec3) -> Self {
+    pub fn new(pos: Vec4) -> Self {
         Self {
             pos: pos.xyz() / pos.w,
-            color,
             inv_w: 1.0 / pos.w,
         }
     }
 
     pub fn from_world_view(p: Vertex, m_cam: Mat4) -> Self {
-        Self::new(m_cam * p.pos, p.color)
+        Self::new(m_cam * p.pos)
     }
 
     pub fn is_back_facing(a: Self, b: Self, c: Self) -> bool {

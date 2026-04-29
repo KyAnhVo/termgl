@@ -73,6 +73,9 @@ pub struct Mesh {
     /// 2D game with no shading, or a light source)
     pub no_shade: bool,
 
+    /// default color if no uv mapping
+    pub default_color: Vec3,
+
     /// finalize normals essentially transforms the normal to world space.
     /// So if  no movement/spinning, it still is in that same position,
     /// thus we use this var to indicate if it has changed.
@@ -96,6 +99,7 @@ impl Mesh {
             height_map: None,
             normal_map: None,
             no_shade,
+            default_color: Vec3::new(144.0, 144.0, 144.0) / 255.0,
             no_change: false,
         }
     }
@@ -271,7 +275,7 @@ impl Mesh {
                 let u: f32 = j as f32 / long as f32; // [0, 1] longitude
                 let v: f32 = i as f32 / lat as f32; // [0, 1] latitude
 
-                mesh.add_vertex(Vertex::new(pos, color));
+                mesh.add_vertex(Vertex::new(pos));
                 mesh.add_normal(normal.extend(0.0));
                 mesh.add_uv(Vec2::new(u, v));
             }
