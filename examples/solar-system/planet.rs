@@ -72,6 +72,7 @@ impl Planet {
                 Vec3::ONE,
                 2.0 * PI / 64.0,
             );
+            ring.no_shade = true;
             ring.add_texture_map("examples/assets/saturn_ring.jpg");
             Some(ring)
         } else {

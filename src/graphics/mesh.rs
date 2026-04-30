@@ -338,19 +338,19 @@ impl Mesh {
             // top inner
             mesh.add_vertex(Vertex::from_vec3(p_in));
             mesh.add_normal(n_up);
-            mesh.add_uv(Vec2::new(v, 0.0));
+            mesh.add_uv(Vec2::new(0.0, v));
             // top outer
             mesh.add_vertex(Vertex::from_vec3(p_out));
             mesh.add_normal(n_up);
-            mesh.add_uv(Vec2::new(v, 1.0));
+            mesh.add_uv(Vec2::new(1.0, v));
             // bottom inner
             mesh.add_vertex(Vertex::from_vec3(p_in));
             mesh.add_normal(n_down);
-            mesh.add_uv(Vec2::new(v, 0.0));
+            mesh.add_uv(Vec2::new(0.0, v));
             // bottom outer
             mesh.add_vertex(Vertex::from_vec3(p_out));
             mesh.add_normal(n_down);
-            mesh.add_uv(Vec2::new(v, 1.0));
+            mesh.add_uv(Vec2::new(1.0, v));
         }
 
         let mk = |vi: usize| VertexIndices::new(vi, vi, vi);
