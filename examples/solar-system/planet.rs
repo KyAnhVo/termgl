@@ -54,6 +54,10 @@ impl Planet {
 
         let material: Material = Material::new(Vec3::ONE, 0.1, 200.0);
         let mut mesh: Mesh = Mesh::create_sphere(rad, original_pos, material, Vec3::ONE, 16, 16);
+        if is_sun {
+            mesh.no_shade = true;
+        }
+        mesh.no_shade = true;
         mesh.add_texture_map(&format!("examples/assets/{}.jpg", name));
 
         let saturn_ring: Option<Mesh> = if &*name == "saturn" {
@@ -85,8 +89,8 @@ impl Planet {
         }
     }
 
-    pub fn move_planet(&mut self, t: f32, t_scale: f32) {
-        let rot: Mat3 = Mat3::from_rotation_y(t * t_scale * self.rotational_velocity);
+    pub fn move_planet(&mut self, dt: f32, t: f32, t_scale: f32) {
+        let rot: Mat3 = Mat3::from_rotation_y(dt * t_scale * self.rotational_velocity);
         let orbit: Mat3 = Mat3::from_rotation_y(t * t_scale * self.orbital_velocity);
         self.mesh.move_origin_to(orbit * self.location_original);
         self.mesh.rotate(rot);

@@ -55,7 +55,7 @@ impl SolarSystem {
             sun_light: PointLightSource::new(
                 Vec3::ZERO,
                 None,
-                Vec3::ONE,
+                Vec3::ONE * 90.0,
                 Vec3::ONE,
                 Vec3::ONE * 0.1,
                 Vec3::ZERO,
@@ -74,7 +74,7 @@ impl SolarSystem {
     pub fn simulate(&mut self, dt: f32) {
         self.t += dt;
         for planet in &mut self.planets {
-            planet.move_planet(self.t, self.t_scale);
+            planet.move_planet(dt, self.t, self.t_scale);
         }
     }
 }
