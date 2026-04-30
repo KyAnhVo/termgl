@@ -1,12 +1,14 @@
 use glam::{Mat3, Vec3};
 use termgl::graphics::{Material, Mesh};
 
+use std::rc::Rc;
+
 use rand::random_range;
 use std::f32::consts::PI;
 
 pub struct Planet {
     /// Name of planet (e.g. Earth, Venus, etc.)
-    pub name: String,
+    pub name: Rc<str>,
 
     /// Radius (of the sphere representing it)
     pub rad: f32,
@@ -38,7 +40,7 @@ pub struct Planet {
 
 impl Planet {
     pub fn new(
-        name: String,
+        name: Rc<str>,
         rad: f32,
         orbit_rad: f32,
         rotational_velocity: f32,
@@ -54,7 +56,7 @@ impl Planet {
         let mut mesh: Mesh = Mesh::create_sphere(rad, original_pos, material, Vec3::ONE, 16, 16);
         mesh.add_texture_map(&format!("examples/assets/{}.jpg", name));
 
-        let saturn_ring: Option<Mesh> = if name == "saturn" {
+        let saturn_ring: Option<Mesh> = if &*name == "saturn" {
             let mut ring: Mesh = Mesh::create_ring(
                 rad,
                 rad * 2.0,
