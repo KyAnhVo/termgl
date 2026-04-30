@@ -25,8 +25,8 @@ fn main() {
 
     let camera: Camera = Camera::new(
         Vec3::Y.extend(0.0),
-        Vec3::NEG_Z.extend(0.0),
-        Vec3::NEG_Z.extend(1.0),
+        Vec3::Z.extend(0.0),
+        (Vec3::NEG_Z * 8.0).extend(1.0),
         PI / 4.0,
     );
 

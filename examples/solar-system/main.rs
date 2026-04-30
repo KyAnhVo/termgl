@@ -12,7 +12,7 @@ fn main() {
     let mut solar_system: SolarSystem = SolarSystem::new(t_scale);
     let printer_type: PrinterType = PrinterType::Color;
 
-    let cam_pos = Vec3::new(-10.0, 10.0, 0.0);
+    let cam_pos = Vec3::new(-30.0, 30.0, 0.0);
     let camera: Camera = Camera::new(
         Vec3::Y.extend(0.0),
         (-cam_pos).normalize().extend(0.0),
@@ -30,7 +30,7 @@ fn main() {
         .add_point_light_source(solar_system.sun_light.clone());
     loop {
         pipeline.start_frame();
-        solar_system.simulate(1.0);
+        solar_system.simulate(1.0 / 80.0);
         pipeline.render_mesh(&mut solar_system.sun.mesh);
         for planet in &mut solar_system.planets {
             pipeline.render_mesh(&mut planet.mesh);

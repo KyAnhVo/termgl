@@ -39,8 +39,8 @@ impl Camera {
 
         let mut up3: Vec3 = up.xyz().normalize();
         let gaze3: Vec3 = gaze.xyz().normalize();
-        let right3: Vec3 = gaze3.cross(up3);
-        up3 = right3.cross(gaze3).normalize();
+        let right3: Vec3 = up3.cross(gaze3);
+        up3 = gaze3.cross(right3).normalize();
 
         let (width_u16, height_u16) = terminal::size().unwrap();
         let (width, height) = (width_u16 as usize, height_u16 as usize * 2);
@@ -68,9 +68,9 @@ impl Camera {
             Vec4::new(-self.pos.x, -self.pos.y, -self.pos.z, 1.0),
         );
         let r_view: Mat4 = Mat4::from_cols(
-            Vec4::new(self.right.x, self.up.x, -self.gaze.x, 0.0),
-            Vec4::new(self.right.y, self.up.y, -self.gaze.y, 0.0),
-            Vec4::new(self.right.z, self.up.z, -self.gaze.z, 0.0),
+            Vec4::new(self.right.x, self.up.x, self.gaze.x, 0.0),
+            Vec4::new(self.right.y, self.up.y, self.gaze.y, 0.0),
+            Vec4::new(self.right.z, self.up.z, self.gaze.z, 0.0),
             Vec4::new(0.0, 0.0, 0.0, 1.0),
         );
         r_view * t_view
