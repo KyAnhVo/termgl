@@ -1,5 +1,5 @@
 use crate::graphics::{
-    projection::Camera,
+    camera::Camera,
     uv_map::{HeightMap, NormalMap, UVMap},
     vertex::{Material, RasterVertex, Vertex},
 };

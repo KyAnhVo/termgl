@@ -1,5 +1,5 @@
 use crate::graphics::{
-    mesh::Mesh, options::LightSourceShadingMode, projection::Camera, vertex::Material,
+    camera::Camera, mesh::Mesh, options::LightSourceShadingMode, vertex::Material,
 };
 use glam::{Vec3, Vec4, Vec4Swizzles};
 

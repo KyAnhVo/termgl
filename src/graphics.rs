@@ -11,8 +11,8 @@ pub use uv_map::{HeightMap, NormalMap, UVMap};
 pub use vertex::{Material, Vertex};
 
 // the spaces
-mod projection;
-pub use projection::Camera;
+mod camera;
+pub use camera::Camera;
 
 // the lighting
 mod point_light_source;

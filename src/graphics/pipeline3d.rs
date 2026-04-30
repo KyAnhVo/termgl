@@ -1,8 +1,8 @@
 use crate::graphics::{
+    camera::Camera,
     mesh::Mesh,
     options::ShadingMode,
     printer::{Printer, PrinterType},
-    projection::Camera,
     rasterizer::Rasterizer,
     shader::Shader,
     vertex::RasterVertex,

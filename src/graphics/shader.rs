@@ -1,5 +1,5 @@
 use crate::graphics::point_light_source::PointLightSource;
-use crate::graphics::projection::Camera;
+use crate::graphics::camera::Camera;
 use crate::graphics::vertex::Material;
 
 use glam::{Vec3, Vec4};

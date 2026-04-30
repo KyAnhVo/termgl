@@ -1,9 +1,9 @@
 use glam::{Vec2, Vec3, Vec4, Vec4Swizzles};
 
 use crate::graphics::{
+    camera::Camera,
     mesh::{Mesh, VertexIndices},
     options::ShadingMode,
-    projection::Camera,
     shader::Shader,
     vertex::{RasterVertex, Vertex},
 };
