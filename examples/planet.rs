@@ -46,11 +46,11 @@ fn main() {
 
     loop {
         let start = time::Instant::now();
+        pipeline.start_frame();
         mesh.rotate(rotation.clone());
         mesh.finalize_mesh();
-        pipeline.resize();
         pipeline.render_mesh(&mut mesh);
-        pipeline.print();
+        pipeline.end_frame();
         let elapsed = start.elapsed();
         sleep(
             time::Duration::from_millis(10)

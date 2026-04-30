@@ -48,8 +48,8 @@ impl Planet {
         is_sun: bool,
     ) -> Self {
         let random_num: f32 = random_range(0..100) as f32 / 100.0;
-        let default_rot: Mat3 = Mat3::from_rotation_z(2.0 * PI * random_num);
-        let original_pos: Vec3 = default_rot * Vec3::ONE * rad;
+        let default_rot: Mat3 = Mat3::from_rotation_y(2.0 * PI * random_num);
+        let original_pos: Vec3 = default_rot * Vec3::X * orbit_rad;
         let original_orientation: Mat3 = default_rot * Mat3::IDENTITY;
 
         let material: Material = Material::new(Vec3::ONE, 0.1, 200.0);
@@ -86,9 +86,18 @@ impl Planet {
     }
 
     pub fn move_planet(&mut self, t: f32, t_scale: f32) {
-        let rot: Mat3 = Mat3::from_rotation_z(t * t_scale * self.rotational_velocity);
-        let orbit: Mat3 = Mat3::from_rotation_z(t * t_scale * self.orbital_velocity);
+        let rot: Mat3 = Mat3::from_rotation_y(t * t_scale * self.rotational_velocity);
+        let orbit: Mat3 = Mat3::from_rotation_y(t * t_scale * self.orbital_velocity);
         self.mesh.move_origin_to(orbit * self.location_original);
         self.mesh.rotate(rot);
+        self.mesh.finalize_mesh();
+        match &mut self.ring_mesh {
+            Some(mesh) => {
+                mesh.move_origin_to(orbit * self.location_original);
+                mesh.rotate(rot);
+                mesh.finalize_mesh();
+            }
+            None => {}
+        }
     }
 }

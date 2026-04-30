@@ -8,6 +8,7 @@ use glam::{Vec3, Vec4, Vec4Swizzles};
 ///
 /// Sometimes, we use the point light source for simplicity rather than it being a true point light source.
 /// so we can have a "wrapper mesh" that is rendered in place of just the point light source.
+#[derive(Clone)]
 pub struct PointLightSource {
     /// position of the light source in world space
     pub pos: Vec3,
@@ -89,5 +90,12 @@ impl PointLightSource {
             color.y.clamp(0.0, 1.0),
             color.z.clamp(0.0, 1.0),
         )
+    }
+
+    pub fn scale_intensity(&mut self, diffuse_scale: f32, specular_scale: f32, ambient_scale: f32) {
+        assert!(diffuse_scale >= 0.0 && specular_scale >= 0.0 && ambient_scale >= 0.0);
+        self.diffuse_intensity *= diffuse_scale;
+        self.specular_intensity *= specular_scale;
+        self.ambient_intensity *= ambient_scale;
     }
 }

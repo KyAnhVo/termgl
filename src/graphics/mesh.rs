@@ -313,11 +313,49 @@ impl Mesh {
         color: Vec3,
         d_theta: f32,
     ) -> Self {
+        assert!(r_in > 0.0 && r_out > r_in, "invalid ring radii");
+
         let mut mesh: Mesh = Mesh::new(material, false);
+        mesh.default_color = color;
         mesh.move_origin_to(origin);
 
-        // TODO: Implement ring implementation
-        // NOTE: Must have both sides so viewable from top and bottom.
+        // angular segments; round so we close cleanly
+        let n: usize = (2.0 * PI / d_theta).round().max(3.0) as usize;
+
+        for i in 0..=n {
+            let theta: f32 = 2.0 * PI * i as f32 / n as f32;
+            let (s, c): (f32, f32) = (theta.sin(), theta.cos());
+            let v: f32 = i as f32 / n as f32;
+
+            // inner (u = 0)
+            mesh.add_vertex(Vertex::from_vec3(Vec3::new(r_in * c, 0.0, r_in * s)));
+            mesh.add_normal(Vec3::Y.extend(0.0));
+            mesh.add_uv(Vec2::new(0.0, v));
+
+            // outer (u = 1)
+            mesh.add_vertex(Vertex::from_vec3(Vec3::new(r_out * c, 0.0, r_out * s)));
+            mesh.add_normal(Vec3::Y.extend(0.0));
+            mesh.add_uv(Vec2::new(1.0, v));
+        }
+
+        // triangles: each angular slice = 1 quad = 2 tris top + 2 tris bottom
+        // (reversed winding for bottom). Back-face culling drops whichever
+        // side is hidden.
+        let mk = |vi: usize| VertexIndices::new(vi, vi, vi);
+        for i in 0..n {
+            let in_a: usize = 2 * i;
+            let out_a: usize = 2 * i + 1;
+            let in_b: usize = 2 * (i + 1);
+            let out_b: usize = 2 * (i + 1) + 1;
+
+            // top
+            mesh.add_triangle(mk(in_a), mk(out_a), mk(in_b));
+            mesh.add_triangle(mk(out_a), mk(out_b), mk(in_b));
+
+            // bottom (reversed winding)
+            mesh.add_triangle(mk(in_a), mk(in_b), mk(out_a));
+            mesh.add_triangle(mk(out_a), mk(in_b), mk(out_b));
+        }
 
         mesh
     }

@@ -54,7 +54,7 @@ impl Pipeline3D {
     }
 
     /// Resize pipeline's buffers, for printer and rasterizer.
-    pub fn resize(&mut self) {
+    fn resize(&mut self) {
         let (width_u16, height_u16) = terminal::size().unwrap();
         let (width, height) = (width_u16 as usize, height_u16 as usize * 2);
         if width != self.width || height != self.height {
@@ -66,9 +66,14 @@ impl Pipeline3D {
         }
     }
 
+    /// Call when frame starts
+    pub fn start_frame(&mut self) {
+        self.rasterizer.clear();
+        self.resize();
+    }
+
     /// Render the meshes into rasterizer's buffer
     pub fn render_mesh(&mut self, mesh: &mut Mesh) {
-        self.rasterizer.clear();
         let shading_mode: ShadingMode = self.shading_mode;
 
         // finalize mesh normals and vertices (to world space)
@@ -89,9 +94,14 @@ impl Pipeline3D {
     }
 
     /// Print the buffer into the screen
-    pub fn print(&mut self) {
+    fn print(&mut self) {
         self.printer.print(&self.rasterizer.frame_buff);
         stdout().flush().unwrap();
         stdout().write_all(&self.printer.buff).unwrap();
+    }
+
+    /// Call when frame ends
+    pub fn end_frame(&mut self) {
+        self.print();
     }
 }
