@@ -12,7 +12,7 @@ fn main() {
     let mut solar_system: SolarSystem = SolarSystem::new(t_scale);
     let printer_type: PrinterType = PrinterType::Color;
 
-    let cam_pos = Vec3::new(-30.0, -30.0, 0.0);
+    let cam_pos = Vec3::new(1.0, 0.5, 1.0) * 45.0;
     let camera: Camera = Camera::new(
         Vec3::Y.extend(0.0),
         (-cam_pos).normalize().extend(0.0),
@@ -34,6 +34,7 @@ fn main() {
         pipeline.render_mesh(&mut solar_system.sun.mesh);
         for planet in &mut solar_system.planets {
             pipeline.render_mesh(&mut planet.mesh);
+            pipeline.render_mesh(&mut planet.orbit_line);
             match &mut planet.ring_mesh {
                 Some(ring) => pipeline.render_mesh(ring),
                 None => {}

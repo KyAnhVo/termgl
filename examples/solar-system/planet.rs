@@ -36,6 +36,9 @@ pub struct Planet {
 
     /// the ring mesh, cause saturn you know...
     pub ring_mesh: Option<Mesh>,
+
+    /// the orbit line
+    pub orbit_line: Mesh,
 }
 
 impl Planet {
@@ -75,6 +78,23 @@ impl Planet {
             None
         };
 
+        let orbit_line: Mesh = if is_sun {
+            Mesh::new(material, false)
+        } else {
+            let delta: f32 = 0.1;
+            let mut orbit_mesh: Mesh = Mesh::create_ring(
+                orbit_rad - delta,
+                orbit_rad + delta,
+                Vec3::ZERO,
+                material,
+                Vec3::ONE,
+                2.0 * PI / 64.0,
+            );
+            orbit_mesh.finalize_mesh();
+            orbit_mesh.no_shade = true;
+            orbit_mesh
+        };
+
         Self {
             name,
             rad,
@@ -86,6 +106,7 @@ impl Planet {
             is_sun,
             mesh,
             ring_mesh: saturn_ring,
+            orbit_line: orbit_line,
         }
     }
 

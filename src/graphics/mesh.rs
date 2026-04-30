@@ -319,42 +319,56 @@ impl Mesh {
         mesh.default_color = color;
         mesh.move_origin_to(origin);
 
-        // angular segments; round so we close cleanly
         let n: usize = (2.0 * PI / d_theta).round().max(3.0) as usize;
+
+        // Per angular step we emit 4 vertices: top-inner, top-outer,
+        // bottom-inner, bottom-outer. Top vertices carry +Y normals,
+        // bottom carry -Y, so each face shades correctly regardless of
+        // which side the camera is on.
+        let n_up: Vec4 = Vec3::Y.extend(0.0);
+        let n_down: Vec4 = Vec3::NEG_Y.extend(0.0);
 
         for i in 0..=n {
             let theta: f32 = 2.0 * PI * i as f32 / n as f32;
             let (s, c): (f32, f32) = (theta.sin(), theta.cos());
             let v: f32 = i as f32 / n as f32;
+            let p_in: Vec3 = Vec3::new(r_in * c, 0.0, r_in * s);
+            let p_out: Vec3 = Vec3::new(r_out * c, 0.0, r_out * s);
 
-            // inner (u = 0)
-            mesh.add_vertex(Vertex::from_vec3(Vec3::new(r_in * c, 0.0, r_in * s)));
-            mesh.add_normal(Vec3::Y.extend(0.0));
-            mesh.add_uv(Vec2::new(0.0, v));
-
-            // outer (u = 1)
-            mesh.add_vertex(Vertex::from_vec3(Vec3::new(r_out * c, 0.0, r_out * s)));
-            mesh.add_normal(Vec3::Y.extend(0.0));
-            mesh.add_uv(Vec2::new(1.0, v));
+            // top inner
+            mesh.add_vertex(Vertex::from_vec3(p_in));
+            mesh.add_normal(n_up);
+            mesh.add_uv(Vec2::new(v, 0.0));
+            // top outer
+            mesh.add_vertex(Vertex::from_vec3(p_out));
+            mesh.add_normal(n_up);
+            mesh.add_uv(Vec2::new(v, 1.0));
+            // bottom inner
+            mesh.add_vertex(Vertex::from_vec3(p_in));
+            mesh.add_normal(n_down);
+            mesh.add_uv(Vec2::new(v, 0.0));
+            // bottom outer
+            mesh.add_vertex(Vertex::from_vec3(p_out));
+            mesh.add_normal(n_down);
+            mesh.add_uv(Vec2::new(v, 1.0));
         }
 
-        // triangles: each angular slice = 1 quad = 2 tris top + 2 tris bottom
-        // (reversed winding for bottom). Back-face culling drops whichever
-        // side is hidden.
         let mk = |vi: usize| VertexIndices::new(vi, vi, vi);
         for i in 0..n {
-            let in_a: usize = 2 * i;
-            let out_a: usize = 2 * i + 1;
-            let in_b: usize = 2 * (i + 1);
-            let out_b: usize = 2 * (i + 1) + 1;
+            // 4 verts per step, ordered [t_in, t_out, b_in, b_out]
+            let a: usize = 4 * i;
+            let b: usize = 4 * (i + 1);
+            let (t_in_a, t_out_a, b_in_a, b_out_a) = (a, a + 1, a + 2, a + 3);
+            let (t_in_b, t_out_b, b_in_b, b_out_b) = (b, b + 1, b + 2, b + 3);
 
-            // top
-            mesh.add_triangle(mk(in_a), mk(out_a), mk(in_b));
-            mesh.add_triangle(mk(out_a), mk(out_b), mk(in_b));
+            // top face (+Y normals)
+            mesh.add_triangle(mk(t_in_a), mk(t_out_a), mk(t_in_b));
+            mesh.add_triangle(mk(t_out_a), mk(t_out_b), mk(t_in_b));
 
-            // bottom (reversed winding)
-            mesh.add_triangle(mk(in_a), mk(in_b), mk(out_a));
-            mesh.add_triangle(mk(out_a), mk(in_b), mk(out_b));
+            // bottom face (-Y normals, reversed winding so it's
+            // front-facing from below)
+            mesh.add_triangle(mk(b_in_a), mk(b_in_b), mk(b_out_a));
+            mesh.add_triangle(mk(b_out_a), mk(b_in_b), mk(b_out_b));
         }
 
         mesh

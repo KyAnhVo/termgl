@@ -30,11 +30,11 @@ impl SolarSystem {
             Rc::from("neptune"),
         ]);
         // Not to scale
-        let radii: Rc<[f32]> = Rc::from([0.5, 0.6, 1.0, 0.8, 2.0, 1.5, 1.3, 1.3]);
-        let orbit_radii: Rc<[f32]> = Rc::from([6.0, 9.0, 12.0, 15.0, 18.0, 21.0, 24.0, 30.0]);
-        let rotational_velocity: Rc<[f32]> = Rc::from([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]);
+        let radii: Rc<[f32]> = Rc::from([0.5, 0.75, 1.0, 1.0, 2.0, 1.5, 1.25, 1.25]);
+        let orbit_radii: Rc<[f32]> = Rc::from([5.0, 6.75, 9.0, 11.5, 15.0, 20.5, 24.5, 28.0]);
+        let rotational_velocity: Rc<[f32]> = Rc::from([8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0]);
         let orbital_velocity: Rc<[f32]> =
-            Rc::from([10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0]);
+            Rc::from([80.0, 70.0, 60.0, 50.0, 40.0, 30.0, 20.0, 10.0]);
 
         let mut planet_vec: Vec<Planet> = vec![];
         for i in 0..8 {
@@ -55,7 +55,7 @@ impl SolarSystem {
             sun_light: PointLightSource::new(
                 Vec3::ZERO,
                 None,
-                Vec3::ONE * 90.0,
+                Vec3::ONE * 150.0,
                 Vec3::ONE,
                 Vec3::ONE * 0.1,
                 Vec3::ZERO,
