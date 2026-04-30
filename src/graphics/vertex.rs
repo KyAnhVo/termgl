@@ -5,12 +5,12 @@ use glam::{Mat4, Vec2, Vec3, Vec3Swizzles, Vec4, Vec4Swizzles};
 #[derive(Clone, Copy)]
 pub struct Material {
     pub specular_constant: Vec3,
-    pub ambient_constant: Vec3,
+    pub ambient_constant: f32,
     pub specular_exponent: f32,
 }
 
 impl Material {
-    pub fn new(specular_constant: Vec3, ambient_constant: Vec3, specular_exponent: f32) -> Self {
+    pub fn new(specular_constant: Vec3, ambient_constant: f32, specular_exponent: f32) -> Self {
         Self {
             specular_constant,
             ambient_constant,
@@ -26,10 +26,14 @@ pub struct Vertex {
 }
 
 impl Vertex {
-    pub fn new(pos: Vec3) -> Self {
+    pub fn from_vec3(pos: Vec3) -> Self {
         Self {
             pos: pos.extend(1.0),
         }
+    }
+    pub fn from_vec4(pos: Vec4) -> Self {
+        assert!(pos.w == 1.0, "default position w must be 0");
+        Self { pos }
     }
 }
 

@@ -256,6 +256,7 @@ impl Mesh {
         long: usize,
     ) -> Mesh {
         let mut mesh: Mesh = Mesh::new(material, false);
+        mesh.default_color = color;
         mesh.move_origin_to(origin);
 
         // vertices + normals + uvs
@@ -275,7 +276,7 @@ impl Mesh {
                 let u: f32 = j as f32 / long as f32; // [0, 1] longitude
                 let v: f32 = i as f32 / lat as f32; // [0, 1] latitude
 
-                mesh.add_vertex(Vertex::new(pos));
+                mesh.add_vertex(Vertex::from_vec3(pos));
                 mesh.add_normal(normal.extend(0.0));
                 mesh.add_uv(Vec2::new(u, v));
             }
@@ -300,6 +301,23 @@ impl Mesh {
                 mesh.add_triangle(mk(tr), mk(bl), mk(br));
             }
         }
+
+        mesh
+    }
+
+    pub fn create_ring(
+        r_in: f32,
+        r_out: f32,
+        origin: Vec3,
+        material: Material,
+        color: Vec3,
+        d_theta: f32,
+    ) -> Self {
+        let mut mesh: Mesh = Mesh::new(material, false);
+        mesh.move_origin_to(origin);
+
+        // TODO: Implement ring implementation
+        // NOTE: Must have both sides so viewable from top and bottom.
 
         mesh
     }

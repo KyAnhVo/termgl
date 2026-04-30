@@ -4,7 +4,7 @@ use termgl::graphics::{Material, Mesh};
 use rand::random_range;
 use std::f32::consts::PI;
 
-struct Planet {
+pub struct Planet {
     /// Name of planet (e.g. Earth, Venus, etc.)
     pub name: String,
 
@@ -31,6 +31,9 @@ struct Planet {
 
     /// the actual mesh of the planet
     pub mesh: Mesh,
+
+    /// the ring mesh, cause saturn you know...
+    pub ring_mesh: Option<Mesh>,
 }
 
 impl Planet {
@@ -47,9 +50,24 @@ impl Planet {
         let original_pos: Vec3 = default_rot * Vec3::ONE * rad;
         let original_orientation: Mat3 = default_rot * Mat3::IDENTITY;
 
-        let material: Material = Material::new(Vec3::ONE, Vec3::ONE * 0.1, 200.0);
+        let material: Material = Material::new(Vec3::ONE, 0.1, 200.0);
         let mut mesh: Mesh = Mesh::create_sphere(rad, original_pos, material, Vec3::ONE, 16, 16);
-        mesh.add_texture_map(&format!("assets/{}.jpg", name));
+        mesh.add_texture_map(&format!("examples/assets/{}.jpg", name));
+
+        let saturn_ring: Option<Mesh> = if name == "saturn" {
+            let mut ring: Mesh = Mesh::create_ring(
+                rad,
+                rad * 2.0,
+                original_pos,
+                material,
+                Vec3::ONE,
+                2.0 * PI / 64.0,
+            );
+            ring.add_texture_map("examples/assets/saturn_ring.jpg");
+            Some(ring)
+        } else {
+            None
+        };
 
         Self {
             name,
@@ -61,6 +79,7 @@ impl Planet {
             orientation_original: original_orientation,
             is_sun,
             mesh,
+            ring_mesh: saturn_ring,
         }
     }
 

@@ -40,10 +40,10 @@ impl Rasterizer {
         self.depth_buff.fill(f32::INFINITY);
     }
 
-    pub fn ndc_to_screen(&self, ndc: Vec3) -> (usize, usize) {
+    pub fn ndc_to_screen(&self, ndc: Vec3) -> (isize, isize) {
         // map [-1, 1] x [-1, 1] to [0, width - 1] x [height - 1, 0]
-        let x: usize = ((ndc.x + 1.0) * 0.5 * (self.width as f32 - 1.0)).round() as usize;
-        let y: usize = ((1.0 - ndc.y) * 0.5 * (self.height as f32 - 1.0)).round() as usize;
+        let x: isize = ((ndc.x + 1.0) * 0.5 * (self.width as f32 - 1.0)).round() as isize;
+        let y: isize = ((1.0 - ndc.y) * 0.5 * (self.height as f32 - 1.0)).round() as isize;
         (x, y)
     }
 
@@ -103,14 +103,14 @@ impl Rasterizer {
         b: Vec3,
         c: Vec3,
     ) -> (usize, usize, usize, usize) {
-        let a_pix: (usize, usize) = self.ndc_to_screen(a);
-        let b_pix: (usize, usize) = self.ndc_to_screen(b);
-        let c_pix: (usize, usize) = self.ndc_to_screen(c);
+        let a_pix: (isize, isize) = self.ndc_to_screen(a);
+        let b_pix: (isize, isize) = self.ndc_to_screen(b);
+        let c_pix: (isize, isize) = self.ndc_to_screen(c);
 
-        let min_x: usize = a_pix.0.min(b_pix.0).min(c_pix.0);
-        let max_x: usize = a_pix.0.max(b_pix.0).max(c_pix.0);
-        let min_y: usize = a_pix.1.min(b_pix.1).min(c_pix.1);
-        let max_y: usize = a_pix.1.max(b_pix.1).max(c_pix.1);
+        let min_x: usize = (a_pix.0.min(b_pix.0).min(c_pix.0).max(0) as usize).min(self.width - 1);
+        let max_x: usize = (a_pix.0.max(b_pix.0).max(c_pix.0).max(0) as usize).min(self.width - 1);
+        let min_y: usize = (a_pix.1.min(b_pix.1).min(c_pix.1).max(0) as usize).min(self.height - 1);
+        let max_y: usize = (a_pix.1.max(b_pix.1).max(c_pix.1).max(0) as usize).min(self.height - 1);
         (min_x, max_x, min_y, max_y)
     }
 

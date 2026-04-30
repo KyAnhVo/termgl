@@ -3,7 +3,7 @@
 ## The main shape
 
 ### Vertex
-A vertex is defined as a location in space.
+A vertex is defined as a location in space. Essentially a wrapper around a Vec3.
 
 ### Mesh
 This is the most important "thing" in the project. 

@@ -65,7 +65,7 @@ impl PointLightSource {
     ) -> Vec3 {
         let kd: Vec3 = color;
         let ks: Vec3 = material.specular_constant;
-        let ka: Vec3 = material.ambient_constant;
+        let ka: Vec3 = color * material.ambient_constant;
         let p: f32 = material.specular_exponent;
 
         let n: Vec3 = normal.xyz();

@@ -1,5 +1,4 @@
 use glam::{Mat3, Vec3};
-use std::env;
 use std::f32::consts::PI;
 use std::thread::sleep;
 use std::time;
@@ -10,7 +9,7 @@ use termgl::graphics::{
 
 fn main() {
     // Mesh with texture map
-    let material: Material = Material::new(Vec3::ONE * 0.1, Vec3::ONE * 0.01, 500.0);
+    let material: Material = Material::new(Vec3::ONE * 0.1, 0.01, 500.0);
     let mut mesh: Mesh = Mesh::create_sphere(0.5, Vec3::Z, material, Vec3::ONE, 20, 20);
     mesh.add_texture_map("examples/assets/earth_bw.jpg");
 
