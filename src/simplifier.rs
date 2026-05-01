@@ -1,21 +1,5 @@
-use crate::graphics::{Material, Mesh, Vertex, VertexIndices};
-use glam::{Vec3, Vec4};
-use std::f32;
+mod qem;
+pub use qem::qem;
 
-pub fn vertex_cluster(mesh: &Mesh) -> Mesh {
-    let mut simplified_mesh = Mesh::new(mesh.material, mesh.no_shade);
-    simplified_mesh.default_color = mesh.default_color;
-
-    // TODO: Implement vertex cluster simplification algorithm
-
-    simplified_mesh
-}
-
-pub fn qem(mesh: &Mesh) -> Mesh {
-    let mut simplified_mesh = Mesh::new(mesh.material, mesh.no_shade);
-    simplified_mesh.default_color = mesh.default_color;
-
-    // TODO: Implement QEM algorithm
-
-    simplified_mesh
-}
+mod vertex_cluster;
+pub use vertex_cluster::vertex_cluster;

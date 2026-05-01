@@ -1,5 +1,5 @@
 // the enums
-pub mod options;
+mod options;
 pub use options::{LightSourceShadingMode, ShadingMode};
 
 // the typical shapes
