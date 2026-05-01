@@ -17,9 +17,9 @@ pub fn vertex_cluster(mesh: &Mesh, hxyz: f32) -> Mesh {
 
     // 2. Get the volume to be bounded, and subsequently the bounding box count
     // on each dimension
-    let (mut x_min, mut x_max): (f32, f32) = (0.0, 0.0);
-    let (mut y_min, mut y_max): (f32, f32) = (0.0, 0.0);
-    let (mut z_min, mut z_max): (f32, f32) = (0.0, 0.0);
+    let (mut x_min, mut x_max): (f32, f32) = (f32::INFINITY, f32::NEG_INFINITY);
+    let (mut y_min, mut y_max): (f32, f32) = (f32::INFINITY, f32::NEG_INFINITY);
+    let (mut z_min, mut z_max): (f32, f32) = (f32::INFINITY, f32::NEG_INFINITY);
     for v in mesh.vertices.iter() {
         let v_vec3: Vec3 = v.pos.xyz() / v.pos.w;
         let (x, y, z): (f32, f32, f32) = (v_vec3.x, v_vec3.y, v_vec3.z);
@@ -45,16 +45,17 @@ pub fn vertex_cluster(mesh: &Mesh, hxyz: f32) -> Mesh {
         let v: Vec3 = mesh.vertices[i].pos.xyz() / mesh.vertices[i].pos.w;
         let cell_index: usize = cells.at_cell(v);
         cells.cluster_sizes[cell_index] += 1;
-        cells.cluster_centers[cell_index] += grade;
+        cells.cluster_centers[cell_index] += v * grade;
     }
     for i in 0..cells.cluster_centers.len() {
         cells.cluster_centers[i] /= cells.cluster_sizes[i] as f32;
         simplified_mesh.add_vertex(Vertex {
-            pos: cells.cluster_centers[i].extend(1.0) / cells.cluster_sizes[i] as f32,
+            pos: cells.cluster_centers[i].extend(1.0),
         });
     }
 
     // 4. Connect using triangles
+    // TODO: Implement last step
 
     simplified_mesh
 }
