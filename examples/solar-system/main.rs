@@ -12,7 +12,7 @@ fn main() {
     let mut solar_system: SolarSystem = SolarSystem::new(t_scale);
     let printer_type: PrinterType = PrinterType::Color;
 
-    let cam_pos = Vec3::new(1.0, 0.5, 1.0) * 45.0;
+    let cam_pos = Vec3::new(1.0, 0.5, 1.0) * 30.0;
     let camera: Camera = Camera::new(
         Vec3::Y.extend(0.0),
         (-cam_pos).normalize().extend(0.0),
@@ -42,6 +42,6 @@ fn main() {
         }
         pipeline.end_frame();
 
-        sleep(time::Duration::from_millis(10));
+        sleep(time::Duration::from_millis(50));
     }
 }
