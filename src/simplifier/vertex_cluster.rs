@@ -8,8 +8,8 @@ use std::{collections::HashSet, f32, rc::Rc};
 pub fn vertex_cluster(mesh: &Mesh, hxyz: f32) -> Mesh {
     let mut simplified_mesh = Mesh::new(mesh.material, mesh.no_shade);
     simplified_mesh.default_color = mesh.default_color;
-
-    // TODO: Implement vertex cluster simplification algorithm
+    simplified_mesh.move_origin_to(mesh.get_origin());
+    simplified_mesh.rotate(mesh.get_orthonormal_basis());
 
     // 1. Get vertex grade
     let vertex_edge_mapping: Rc<[Rc<[usize]>]> = get_vertex_edges_mapping(mesh);
@@ -40,7 +40,21 @@ pub fn vertex_cluster(mesh: &Mesh, hxyz: f32) -> Mesh {
         (x_min, x_max, y_min, y_max, z_min, z_max),
     );
 
-    // 3. Calculate COM of each cell
+    // 3. Calculate COM of each cell, each is a new vertex in the new graph.
+    for (i, grade) in vertex_grades.iter().enumerate() {
+        let v: Vec3 = mesh.vertices[i].pos.xyz() / mesh.vertices[i].pos.w;
+        let cell_index: usize = cells.at_cell(v);
+        cells.cluster_sizes[cell_index] += 1;
+        cells.cluster_centers[cell_index] += grade;
+    }
+    for i in 0..cells.cluster_centers.len() {
+        cells.cluster_centers[i] /= cells.cluster_sizes[i] as f32;
+        simplified_mesh.add_vertex(Vertex {
+            pos: cells.cluster_centers[i].extend(1.0) / cells.cluster_sizes[i] as f32,
+        });
+    }
+
+    // 4. Connect using triangles
 
     simplified_mesh
 }
@@ -73,16 +87,16 @@ impl Cells {
         }
     }
 
-    fn index_of(&self, x: usize, y: usize, z: usize) -> usize {
+    fn index_of(&self, (x, y, z): (usize, usize, usize)) -> usize {
         x + y * self.dim.0 + z * self.dim.0 * self.dim.1
     }
 
-    fn at(&self, vertex: Vec3) -> (usize, usize, usize) {
+    fn at_cell(&self, vertex: Vec3) -> usize {
         let (x, y, z): (f32, f32, f32) = (vertex.x, vertex.y, vertex.z);
         let x_box: usize = ((x - self.x_bound.0) / self.hxyz).floor() as usize;
         let y_box: usize = ((y - self.y_bound.0) / self.hxyz).floor() as usize;
         let z_box: usize = ((z - self.z_bound.0) / self.hxyz).floor() as usize;
-        (x_box, y_box, z_box)
+        self.index_of((x_box, y_box, z_box))
     }
 }
 
