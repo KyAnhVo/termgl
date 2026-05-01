@@ -1,5 +1,6 @@
 use crate::graphics::{Material, Mesh, Vertex, VertexIndices};
 use glam::{Vec3, Vec4};
+use std::f32;
 
 pub fn vertex_cluster(mesh: &Mesh) -> Mesh {
     let mut simplified_mesh = Mesh::new(mesh.material, mesh.no_shade);
