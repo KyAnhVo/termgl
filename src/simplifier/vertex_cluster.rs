@@ -1,6 +1,6 @@
 use crate::graphics::{Material, Mesh, Vertex, VertexIndices};
 use glam::{Vec2, Vec3, Vec4, Vec4Swizzles};
-use std::{collections::HashSet, rc::Rc};
+use std::rc::Rc;
 
 /// Implements the vertex cluster simplification algorithm by Rossignac and Borrel.
 ///
@@ -41,6 +41,7 @@ pub fn vertex_cluster(mesh: &Mesh, hxyz: f32) -> Mesh {
 
     for (i, grade) in vertex_grades.iter().enumerate() {
         if *grade == 0.0 {
+            // Only happens when vertex does not connect to anything else
             continue;
         }
         let v: Vec3 = mesh.vertices[i].pos.xyz() / mesh.vertices[i].pos.w;
@@ -48,7 +49,9 @@ pub fn vertex_cluster(mesh: &Mesh, hxyz: f32) -> Mesh {
         cells.cluster_weights[cell_index] += *grade;
         cells.cluster_centers[cell_index] += v * *grade;
     }
-    for i in 0..cells.cluster_centers.len() {
+
+    let mut new_vertices_map: Vec<Option<usize>> = vec![None; cells.cell_count];
+    for i in 0..cells.cell_count {
         if cells.cluster_weights[i] == 0.0 {
             continue;
         }
@@ -56,6 +59,7 @@ pub fn vertex_cluster(mesh: &Mesh, hxyz: f32) -> Mesh {
         simplified_mesh.add_vertex(Vertex {
             pos: cells.cluster_centers[i].extend(1.0),
         });
+        new_vertices_map[i] = Some(simplified_mesh.vertices.len() - 1);
     }
 
     // 4. Calculate weighted UV and Normals
@@ -81,10 +85,37 @@ pub fn vertex_cluster(mesh: &Mesh, hxyz: f32) -> Mesh {
         cells.cluster_uv[i] /= triangle_weighted_cell_sum_grades[i];
         cells.cluster_n[i] =
             (cells.cluster_n[i] / triangle_weighted_cell_sum_grades[i]).normalize();
+        simplified_mesh.add_uv(cells.cluster_uv[i]);
+        simplified_mesh.add_normal(cells.cluster_n[i].extend(0.0));
     }
 
     // 5. Connect using triangles
-    // TODO: Implement connectting triangles
+
+    let get_vertex = |vi: usize| VertexIndices::new(vi, vi, vi);
+    for triangle in mesh.triangles.chunks_exact(3) {
+        let (v1, v2, v3): (Vec3, Vec3, Vec3) = (
+            mesh.vertices[triangle[0].vertex_ind].to_vec3(),
+            mesh.vertices[triangle[1].vertex_ind].to_vec3(),
+            mesh.vertices[triangle[2].vertex_ind].to_vec3(),
+        );
+        let Some(v1_cell) = new_vertices_map[cells.at_cell(v1)] else {
+            continue;
+        };
+        let Some(v2_cell) = new_vertices_map[cells.at_cell(v2)] else {
+            continue;
+        };
+        let Some(v3_cell) = new_vertices_map[cells.at_cell(v3)] else {
+            continue;
+        };
+        if v1_cell == v2_cell || v1_cell == v3_cell || v2_cell == v3_cell {
+            continue;
+        }
+        simplified_mesh.add_triangle(
+            get_vertex(v1_cell),
+            get_vertex(v2_cell),
+            get_vertex(v3_cell),
+        );
+    }
 
     simplified_mesh
 }
