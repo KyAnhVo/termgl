@@ -338,7 +338,7 @@ impl Rasterizer {
         shader: &Shader,
         camera: &Camera,
         vertices: (Vertex, Vertex, Vertex),
-        raster_vertices: (RasterVertex, RasterVertex, RasterVertex),
+        _raster_vertices: (RasterVertex, RasterVertex, RasterVertex),
         normals: (Vec4, Vec4, Vec4),
         uvs: (Vec2, Vec2, Vec2),
     ) -> (Vec3, Vec3, Vec3) {

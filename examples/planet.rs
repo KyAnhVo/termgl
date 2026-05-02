@@ -10,10 +10,9 @@ use termgl::graphics::{
 fn main() {
     // Mesh with texture map
     let material: Material = Material::new(Vec3::ONE * 0.1, 0.01, 500.0);
-    let mut mesh1: Mesh = Mesh::create_sphere(0.5, Vec3::X, material, Vec3::ONE, 20, 20);
+    let mut mesh1: Mesh = Mesh::create_sphere(0.5, Vec3::X * 0.5, material, Vec3::ONE, 20, 10);
+    mesh1.no_shade = true;
     mesh1.add_texture_map("examples/assets/earth_bw.jpg");
-    let mut mesh2: Mesh = Mesh::create_sphere(0.5, Vec3::NEG_X, material, Vec3::ONE, 20, 20);
-    mesh2.add_texture_map("examples/assets/earth_bw.jpg");
 
     let light: PointLightSource = PointLightSource::new(
         Vec3::NEG_Z * 1.0,
@@ -50,13 +49,10 @@ fn main() {
         let start = time::Instant::now();
 
         pipeline.start_frame();
+
         mesh1.rotate(rotation.clone());
         mesh1.finalize_mesh();
-
         pipeline.render_mesh(&mut mesh1);
-        mesh2.rotate(rotation.clone());
-        mesh2.finalize_mesh();
-        pipeline.render_mesh(&mut mesh2);
 
         pipeline.end_frame();
 

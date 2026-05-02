@@ -8,11 +8,6 @@ pub struct SolarSystem {
     pub planets: Vec<Planet>,
     pub sun: Planet,
     pub sun_light: PointLightSource,
-    pub names: Rc<[Rc<str>]>,
-    pub radii: Rc<[f32]>,
-    pub orbit_radii: Rc<[f32]>,
-    pub rotational_velocity: Rc<[f32]>,
-    pub orbital_velocity: Rc<[f32]>,
     t_scale: f32,
     t: f32,
 }
@@ -61,11 +56,6 @@ impl SolarSystem {
                 Vec3::ZERO,
                 termgl::graphics::LightSourceShadingMode::Lambertian,
             ),
-            names,
-            radii,
-            orbit_radii,
-            rotational_velocity,
-            orbital_velocity,
             t_scale,
             t: 0.0,
         }
