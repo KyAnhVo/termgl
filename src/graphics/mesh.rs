@@ -376,11 +376,15 @@ impl Mesh {
 }
 
 impl Mesh {
-    pub fn import_obj(obj_file: &str) -> Self {
+    pub fn import_obj(path: &str) -> Self {
         let mut mesh: Self = Self::new(Material::new(Vec3::ZERO, 0.1, 5.0), false);
 
         // TODO: implement mesh import
 
         mesh
+    }
+
+    pub fn export_obj(&self, path: &str) {
+        // TODO: implement mesh export
     }
 }
