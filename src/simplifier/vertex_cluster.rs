@@ -1,24 +1,26 @@
 use crate::graphics::{Material, Mesh, Vertex, VertexIndices};
 use glam::{Vec2, Vec3, Vec4, Vec4Swizzles};
-use std::{collections::HashSet, f32, rc::Rc};
+use std::{collections::HashSet, rc::Rc};
 
 /// Implements the vertex cluster simplification algorithm by Rossignac and Borrel.
 ///
 /// Note: do not use this if your mesh is not a manifold mesh.
 pub fn vertex_cluster(mesh: &Mesh, hxyz: f32) -> Mesh {
+    // 0. Preprocessing
+
     let mut simplified_mesh = Mesh::new(mesh.material, mesh.no_shade);
     simplified_mesh.default_color = mesh.default_color;
     simplified_mesh.move_origin_to(mesh.get_origin());
     simplified_mesh.rotate(mesh.get_orthonormal_basis());
 
-    // Pre-
-
     // 1. Get vertex grade
+
     let vertex_edge_mapping: Rc<[Rc<[usize]>]> = get_vertex_edges_mapping(mesh);
     let vertex_grades: Rc<[f32]> = get_vertex_grades(mesh, &vertex_edge_mapping);
 
     // 2. Get the volume to be bounded, and subsequently the bounding box count
     // on each dimension
+
     let (mut x_min, mut x_max): (f32, f32) = (f32::INFINITY, f32::NEG_INFINITY);
     let (mut y_min, mut y_max): (f32, f32) = (f32::INFINITY, f32::NEG_INFINITY);
     let (mut z_min, mut z_max): (f32, f32) = (f32::INFINITY, f32::NEG_INFINITY);
@@ -36,6 +38,7 @@ pub fn vertex_cluster(mesh: &Mesh, hxyz: f32) -> Mesh {
     let mut cells: Cells = Cells::new(hxyz, (x_min, x_max, y_min, y_max, z_min, z_max));
 
     // 3. Calculate COM of each cell, each is a new vertex in the new graph.
+
     for (i, grade) in vertex_grades.iter().enumerate() {
         if *grade == 0.0 {
             continue;
@@ -57,20 +60,38 @@ pub fn vertex_cluster(mesh: &Mesh, hxyz: f32) -> Mesh {
 
     // 4. Calculate weighted UV and Normals
 
-    for vertex in &mesh.triangles {}
+    let mut triangle_weighted_cell_sum_grades: Vec<f32> = vec![0.0; cells.cell_count];
+
+    for vertex in mesh.triangles.iter() {
+        let uv: Vec2 = mesh.uv[vertex.uv_ind];
+        let normal: Vec3 = mesh.normals[vertex.normal_ind].xyz();
+        let vertex_ind: usize = vertex.vertex_ind;
+        let vertex: Vec3 = mesh.vertices[vertex_ind].to_vec3();
+        let grade: f32 = vertex_grades[vertex_ind];
+        let cell_ind: usize = cells.at_cell(vertex);
+
+        cells.cluster_uv[cell_ind] += uv * grade;
+        cells.cluster_n[cell_ind] += normal * grade;
+        triangle_weighted_cell_sum_grades[cell_ind] += grade
+    }
+    for i in 0..cells.cell_count {
+        if triangle_weighted_cell_sum_grades[i] == 0.0 {
+            continue;
+        }
+        cells.cluster_uv[i] /= triangle_weighted_cell_sum_grades[i];
+        cells.cluster_n[i] =
+            (cells.cluster_n[i] / triangle_weighted_cell_sum_grades[i]).normalize();
+    }
 
     // 5. Connect using triangles
-    let connected_triangles_set: HashSet<(usize, usize, usize)> = HashSet::new();
-    for vertices in mesh.triangles.chunks_exact(3) {
-        let (v1, v2, v3): (VertexIndices, VertexIndices, VertexIndices) =
-            (vertices[0], vertices[1], vertices[2]);
-    }
+    // TODO: Implement connectting triangles
 
     simplified_mesh
 }
 
 struct Cells {
     pub dim: (usize, usize, usize),
+    pub cell_count: usize,
     pub x_bound: (f32, f32),
     pub y_bound: (f32, f32),
     pub z_bound: (f32, f32),
@@ -91,6 +112,7 @@ impl Cells {
         let arr_size: usize = x_dim * y_dim * z_dim;
         Self {
             dim: (x_dim, y_dim, z_dim),
+            cell_count: x_dim * y_dim * z_dim,
             x_bound: (bounding_box.0, bounding_box.1),
             y_bound: (bounding_box.2, bounding_box.3),
             z_bound: (bounding_box.4, bounding_box.5),
