@@ -4,7 +4,12 @@ use crate::graphics::{
     vertex::{Material, RasterVertex, Vertex},
 };
 use glam::{Mat3, Mat4, Vec2, Vec3, Vec4, Vec4Swizzles};
-use std::f32::consts::PI;
+use std::io;
+use std::{
+    f32::consts::PI,
+    fs::File,
+    io::{BufWriter, Write},
+};
 
 /// a 3-tuple of indices of vertex, normal, and uv
 #[derive(Clone, Copy)]
@@ -384,7 +389,82 @@ impl Mesh {
         mesh
     }
 
-    pub fn export_obj(&self, path: &str) {
-        // TODO: implement mesh export
+    pub fn export_obj(&self, mesh_path: &str, mtl_path: &str) -> io::Result<()> {
+        let mesh_file: File = File::create(mesh_path)?;
+        let mut mesh_writer: BufWriter<File> = BufWriter::new(mesh_file);
+
+        let material_file: Option<File> = if mtl_path.len() == 0 {
+            None
+        } else {
+            Some(File::create(mtl_path)?)
+        };
+        let mut material_writer: Option<BufWriter<File>> = match material_file {
+            Some(file) => Some(BufWriter::new(file)),
+            None => None,
+        };
+        match &mut material_writer {
+            Some(writer) => {
+                let material: Material = self.material;
+                let kd: Vec3 = self.default_color;
+                let ks: Vec3 = material.specular_constant;
+                let ka: Vec3 = kd * material.ambient_constant;
+                writeln!(writer, "newmtl material")?;
+                writeln!(writer, "Ka {} {} {}", ka.x, ka.y, ka.z)?;
+                writeln!(writer, "Ks {} {} {}", ks.x, ks.y, ks.z)?;
+                writeln!(writer, "Kd {} {} {}", kd.x, kd.y, kd.z)?;
+
+                writeln!(mesh_writer, "mtllib {}", mtl_path)?;
+            }
+            None => {}
+        };
+
+        writeln!(mesh_writer, "\n# Vertices\n")?;
+        for vertex in self.vertices.iter() {
+            writeln!(
+                mesh_writer,
+                "v {} {} {}",
+                vertex.pos.x / vertex.pos.w,
+                vertex.pos.y / vertex.pos.w,
+                vertex.pos.z / vertex.pos.w
+            )?;
+        }
+
+        writeln!(mesh_writer, "\n# uv indices\n")?;
+        for uv in self.uv.iter() {
+            writeln!(mesh_writer, "vt {} {}", uv.x, uv.y)?;
+        }
+
+        writeln!(mesh_writer, "\n# normals\n")?;
+        for normal in self.normals.iter() {
+            writeln!(mesh_writer, "vn {} {} {}", normal.x, normal.y, normal.z)?;
+        }
+
+        writeln!(mesh_writer, "\n# triangles\n")?;
+        match &material_writer {
+            Some(_) => writeln!(mesh_writer, "usemtl material")?,
+            None => {}
+        };
+        for triangle_indices in self.triangles.chunks_exact(3) {
+            let (a_ind, b_ind, c_ind): (VertexIndices, VertexIndices, VertexIndices) = (
+                triangle_indices[0],
+                triangle_indices[1],
+                triangle_indices[2],
+            );
+            writeln!(
+                mesh_writer,
+                "f {}/{}/{} {}/{}/{} {}/{}/{}",
+                a_ind.vertex_ind + 1,
+                a_ind.uv_ind + 1,
+                a_ind.normal_ind + 1,
+                b_ind.vertex_ind + 1,
+                b_ind.uv_ind + 1,
+                b_ind.normal_ind + 1,
+                c_ind.vertex_ind + 1,
+                c_ind.uv_ind + 1,
+                c_ind.normal_ind + 1,
+            )?;
+        }
+
+        Ok(())
     }
 }
