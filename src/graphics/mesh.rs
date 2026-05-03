@@ -4,10 +4,15 @@ use crate::graphics::{
     vertex::{Material, RasterVertex, Vertex},
 };
 use glam::{Mat3, Mat4, Vec2, Vec3, Vec4, Vec4Swizzles};
-use std::{collections::HashMap, io};
+use std::{
+    collections::HashMap,
+    io::{self, Lines},
+    str::FromStr,
+};
 use std::{
     f32::consts::PI,
     fs::File,
+    io::{BufRead, BufReader, Read},
     io::{BufWriter, Write},
 };
 
@@ -247,6 +252,10 @@ impl Mesh {
     }
 }
 
+//////////////////////////////////////////////////
+/// default meshes ///////////////////////////////
+//////////////////////////////////////////////////
+
 impl Mesh {
     pub fn create_sphere(
         rad: f32,
@@ -372,15 +381,29 @@ impl Mesh {
     }
 }
 
+////////////////////////////////////////////
+/// Mesh IO ////////////////////////////////
+////////////////////////////////////////////
+
 impl Mesh {
     /// Import a mesh using obj with potentially multiple mtl files.
     ///
     /// Note: No clashing material names between mtl files. Undefined behaviour.
     /// Note: Does not support concave meshes.
-    pub fn import_obj(path: &str) -> Vec<Self> {
+    pub fn import_obj(mesh_path: &str, mtl_paths: Option<Vec<&str>>) -> Vec<Self> {
         let mut meshes: Vec<Self> = vec![];
 
         // Read .mtl first, put .mtl files
+        let materials: Option<HashMap<String, Material>> = match &mtl_paths {
+            Some(paths) => {
+                let mut mats: HashMap<String, Material> = HashMap::new();
+                for mat_f in paths.iter() {
+                    Self::import_mtl(&mut mats, mat_f).ok();
+                }
+                Some(mats)
+            }
+            None => None,
+        };
 
         meshes
     }
@@ -464,6 +487,106 @@ impl Mesh {
                 c_ind.uv_ind + 1,
                 c_ind.normal_ind + 1,
             )?;
+        }
+
+        Ok(())
+    }
+
+    fn import_mtl(mat_map: &mut HashMap<String, Material>, path: &str) -> io::Result<()> {
+        let kd_default: Vec3 = Vec3::new(144.0, 144.0, 144.0) / 255.0;
+        let ks_default: Vec3 = Vec3::ONE;
+        let ka_default: Vec3 = kd_default * 0.1;
+        let ns_default: f32 = 1.0;
+
+        let mut name: String = String::new();
+        let mut kd: Option<Vec3> = None;
+        let mut ks: Option<Vec3> = None;
+        let mut ka: Option<Vec3> = None;
+        let mut ns: Option<f32> = None;
+
+        let file: File = File::open(path)?;
+        let lines: Lines<BufReader<File>> = BufReader::new(file).lines();
+        for line in lines {
+            let line_str: String = line?;
+            let parts: Vec<&str> = line_str.split_whitespace().collect();
+            if parts.is_empty() {
+                continue;
+            }
+
+            if parts[0] == "newmtl" {
+                // newmtl <name> line
+                // If there is a material already loading, load it in
+                if !name.is_empty() {
+                    mat_map.insert(
+                        name.clone(),
+                        Material::new(
+                            match kd {
+                                Some(kd) => kd,
+                                None => kd_default,
+                            },
+                            match ks {
+                                Some(ks) => ks,
+                                None => ks_default,
+                            },
+                            match ka {
+                                Some(ka) => ka,
+                                None => ka_default,
+                            },
+                            match ns {
+                                Some(ns) => ns,
+                                None => ns_default,
+                            },
+                        ),
+                    );
+                }
+                name = parts[1].to_string();
+                kd = None;
+                ks = None;
+                ka = None;
+                ns = None;
+            } else if parts[0] == "Kd" || parts[0] == "Ks" || parts[0] == "Ka" {
+                // <Ks/Kd/Ka> r g b line
+                // just... add them in.
+                let r: f32 = parts[1].parse::<f32>().unwrap();
+                let g: f32 = parts[2].parse::<f32>().unwrap();
+                let b: f32 = parts[3].parse::<f32>().unwrap();
+                if parts[0] == "Kd" {
+                    kd = Some(Vec3::new(r, g, b));
+                } else if parts[0] == "Ks" {
+                    ks = Some(Vec3::new(r, g, b));
+                } else {
+                    ka = Some(Vec3::new(r, g, b));
+                }
+            } else if parts[0] == "Ns" {
+                // Ns p line
+                // same as above
+                let p: f32 = parts[1].parse::<f32>().unwrap();
+                ns = Some(p);
+            }
+        }
+
+        if !name.is_empty() {
+            mat_map.insert(
+                name.clone(),
+                Material::new(
+                    match kd {
+                        Some(kd) => kd,
+                        None => kd_default,
+                    },
+                    match ks {
+                        Some(ks) => ks,
+                        None => ks_default,
+                    },
+                    match ka {
+                        Some(ka) => ka,
+                        None => ka_default,
+                    },
+                    match ns {
+                        Some(ns) => ns,
+                        None => ns_default,
+                    },
+                ),
+            );
         }
 
         Ok(())
