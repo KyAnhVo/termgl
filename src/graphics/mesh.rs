@@ -414,10 +414,13 @@ impl Mesh {
                 let kd: Vec3 = self.default_color;
                 let ks: Vec3 = material.specular_constant;
                 let ka: Vec3 = kd * material.ambient_constant;
+                let ns: f32 = material.specular_exponent.min(1000.0).max(0.0);
+
                 writeln!(writer, "newmtl material")?;
                 writeln!(writer, "Ka {} {} {}", ka.x, ka.y, ka.z)?;
                 writeln!(writer, "Ks {} {} {}", ks.x, ks.y, ks.z)?;
                 writeln!(writer, "Kd {} {} {}", kd.x, kd.y, kd.z)?;
+                writeln!(writer, "Ns {}", ns)?;
 
                 writeln!(mesh_writer, "mtllib {}", mtl_path)?;
             }
