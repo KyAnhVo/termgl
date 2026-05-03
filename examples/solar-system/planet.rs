@@ -39,7 +39,7 @@ impl Planet {
         let default_rot: Mat3 = Mat3::from_rotation_y(2.0 * PI * random_num);
         let original_pos: Vec3 = default_rot * Vec3::X * orbit_rad;
 
-        let material: Material = Material::new(Vec3::ONE, Vec3::ONE, 0.1, 200.0);
+        let material: Material = Material::new(Vec3::ONE, Vec3::ONE, Vec3::ONE * 0.1, 200.0);
         let mut mesh: Mesh = Mesh::create_sphere(rad, original_pos, material, 16, 16);
         if is_sun {
             mesh.no_shade = true;

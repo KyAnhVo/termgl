@@ -9,7 +9,7 @@ use termgl::graphics::{
 
 fn main() {
     // Mesh with texture map
-    let material: Material = Material::new(Vec3::ONE, Vec3::ONE * 0.1, 0.01, 500.0);
+    let material: Material = Material::new(Vec3::ONE, Vec3::ONE * 0.1, Vec3::ONE * 0.01, 500.0);
     let mut mesh1: Mesh = Mesh::create_sphere(0.5, Vec3::X * 0.5, material, 20, 10);
     mesh1.no_shade = true;
     mesh1.add_texture_map("examples/assets/earth_bw.jpg");

@@ -6,7 +6,7 @@ use glam::{Mat4, Vec2, Vec3, Vec3Swizzles, Vec4, Vec4Swizzles};
 pub struct Material {
     pub diffuse_constant: Vec3,
     pub specular_constant: Vec3,
-    pub ambient_constant: f32,
+    pub ambient_constant: Vec3,
     pub specular_exponent: f32,
 }
 
@@ -14,7 +14,7 @@ impl Material {
     pub fn new(
         diffuse_constant: Vec3,
         specular_constant: Vec3,
-        ambient_constant: f32,
+        ambient_constant: Vec3,
         specular_exponent: f32,
     ) -> Self {
         Self {
