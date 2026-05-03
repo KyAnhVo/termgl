@@ -7,6 +7,7 @@ use glam::{Mat3, Mat4, Vec2, Vec3, Vec4, Vec4Swizzles};
 use std::{
     collections::HashMap,
     io::{self, Lines},
+    path::Path,
     str::FromStr,
 };
 use std::{
@@ -437,7 +438,11 @@ impl Mesh {
                 writeln!(writer, "Kd {} {} {}", kd.x, kd.y, kd.z)?;
                 writeln!(writer, "Ns {}", ns)?;
 
-                writeln!(mesh_writer, "mtllib {}", mtl_path)?;
+                writeln!(
+                    mesh_writer,
+                    "mtllib {}",
+                    Path::new(mtl_path).file_name().unwrap().to_str().unwrap()
+                )?;
             }
             None => {}
         };
