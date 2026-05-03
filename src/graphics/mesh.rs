@@ -4,7 +4,7 @@ use crate::graphics::{
     vertex::{Material, RasterVertex, Vertex},
 };
 use glam::{Mat3, Mat4, Vec2, Vec3, Vec4, Vec4Swizzles};
-use std::io;
+use std::{collections::HashMap, io};
 use std::{
     f32::consts::PI,
     fs::File,
@@ -381,14 +381,20 @@ impl Mesh {
 }
 
 impl Mesh {
-    pub fn import_obj(path: &str) -> Self {
-        let mut mesh: Self = Self::new(Material::new(Vec3::ZERO, 0.1, 5.0), false);
+    /// Import a mesh using obj with potentially multiple mtl files.
+    ///
+    /// Note: No clashing material names between mtl files. Undefined behaviour.
+    /// Note: Does not support concave meshes.
+    pub fn import_obj(path: &str) -> Vec<Self> {
+        let mut meshes: Vec<Self> = vec![];
 
-        // TODO: implement mesh import
+        // Read .mtl first, put .mtl files
 
-        mesh
+        meshes
     }
 
+    /// Exports mesh into an obj format, with an optional mtl path. If mtl path is empty
+    ///then we don't ship usemtl with obj and don't ship mtl file.
     pub fn export_obj(&self, mesh_path: &str, mtl_path: &str) -> io::Result<()> {
         let mesh_file: File = File::create(mesh_path)?;
         let mut mesh_writer: BufWriter<File> = BufWriter::new(mesh_file);
