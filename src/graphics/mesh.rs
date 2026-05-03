@@ -78,9 +78,6 @@ pub struct Mesh {
     /// 2D game with no shading, or a light source)
     pub no_shade: bool,
 
-    /// default color if no uv mapping
-    pub default_color: Vec3,
-
     /// finalize normals essentially transforms the normal to world space.
     /// So if  no movement/spinning, it still is in that same position,
     /// thus we use this var to indicate if it has changed.
@@ -104,7 +101,6 @@ impl Mesh {
             height_map: None,
             normal_map: None,
             no_shade,
-            default_color: Vec3::new(144.0, 144.0, 144.0) / 255.0,
             no_change: false,
         }
     }
@@ -256,12 +252,10 @@ impl Mesh {
         rad: f32,
         origin: Vec3,
         material: Material,
-        color: Vec3,
         lat: usize,
         long: usize,
     ) -> Mesh {
         let mut mesh: Mesh = Mesh::new(material, false);
-        mesh.default_color = color;
         mesh.move_origin_to(origin);
 
         // vertices + normals + uvs
@@ -315,13 +309,11 @@ impl Mesh {
         r_out: f32,
         origin: Vec3,
         material: Material,
-        color: Vec3,
         d_theta: f32,
     ) -> Self {
         assert!(r_in > 0.0 && r_out > r_in, "invalid ring radii");
 
         let mut mesh: Mesh = Mesh::new(material, false);
-        mesh.default_color = color;
         mesh.move_origin_to(origin);
 
         let n: usize = (2.0 * PI / d_theta).round().max(3.0) as usize;
@@ -411,7 +403,7 @@ impl Mesh {
         match &mut material_writer {
             Some(writer) => {
                 let material: Material = self.material;
-                let kd: Vec3 = self.default_color;
+                let kd: Vec3 = material.diffuse_constant;
                 let ks: Vec3 = material.specular_constant;
                 let ka: Vec3 = kd * material.ambient_constant;
                 let ns: f32 = material.specular_exponent.min(1000.0).max(0.0);

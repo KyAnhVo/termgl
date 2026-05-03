@@ -250,7 +250,7 @@ impl Rasterizer {
         // else we interpolate color.
         let kd: Vec3 = match &mesh.texture_map {
             Some(texture_map) => texture_map.interpolate(uv),
-            None => mesh.default_color,
+            None => mesh.material.diffuse_constant,
         };
 
         let pos: Vec3 = RasterVertex::interpolate_position(
@@ -353,7 +353,11 @@ impl Rasterizer {
                 texture_map.interpolate(uvs_parallax.1),
                 texture_map.interpolate(uvs_parallax.2),
             ),
-            None => (mesh.default_color, mesh.default_color, mesh.default_color),
+            None => (
+                mesh.material.diffuse_constant,
+                mesh.material.diffuse_constant,
+                mesh.material.diffuse_constant,
+            ),
         };
         if mesh.no_shade {
             return vertices_kd;

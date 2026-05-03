@@ -39,8 +39,8 @@ impl Planet {
         let default_rot: Mat3 = Mat3::from_rotation_y(2.0 * PI * random_num);
         let original_pos: Vec3 = default_rot * Vec3::X * orbit_rad;
 
-        let material: Material = Material::new(Vec3::ONE, 0.1, 200.0);
-        let mut mesh: Mesh = Mesh::create_sphere(rad, original_pos, material, Vec3::ONE, 16, 16);
+        let material: Material = Material::new(Vec3::ONE, Vec3::ONE, 0.1, 200.0);
+        let mut mesh: Mesh = Mesh::create_sphere(rad, original_pos, material, 16, 16);
         if is_sun {
             mesh.no_shade = true;
         }
@@ -48,14 +48,8 @@ impl Planet {
         mesh.add_texture_map(&format!("examples/assets/{}.jpg", name));
 
         let saturn_ring: Option<Mesh> = if &*name == "saturn" {
-            let mut ring: Mesh = Mesh::create_ring(
-                rad,
-                rad * 2.0,
-                original_pos,
-                material,
-                Vec3::ONE,
-                2.0 * PI / 64.0,
-            );
+            let mut ring: Mesh =
+                Mesh::create_ring(rad, rad * 2.0, original_pos, material, 2.0 * PI / 64.0);
             ring.no_shade = true;
             ring.add_texture_map("examples/assets/saturn_ring.jpg");
             Some(ring)
@@ -72,7 +66,6 @@ impl Planet {
                 orbit_rad + delta,
                 Vec3::ZERO,
                 material,
-                Vec3::ONE,
                 2.0 * PI / 64.0,
             );
             orbit_mesh.finalize_mesh();
