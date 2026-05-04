@@ -414,7 +414,10 @@ impl Mesh {
         mat_mesh_map.insert("DEFAULT".to_string(), vec![]);
 
         let file: File = File::open(mesh_path)?;
+        let mut line_count: usize = 0;
         for line in BufReader::new(file).lines() {
+            println!("{}", line_count);
+            line_count += 1;
             Self::import_mesh_line_process(
                 &mtl_paths,
                 &mut vertices,
