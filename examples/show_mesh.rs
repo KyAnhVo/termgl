@@ -55,15 +55,15 @@ fn main() -> io::Result<()> {
         Mesh::import_obj(format!("examples/assets/{}.obj", file).as_str(), None)?;
     meshes[0].no_shade = false;
     let mut mesh: Mesh = meshes.remove(0);
-    mesh.move_origin_to(Vec3::X * 5.0);
-    mesh.scale_to(50.0, 20.0, 20.0);
+    mesh.move_origin_to(Vec3::X * 5.5);
+    mesh.scale_to(10.0, 20.0, 20.0);
     let mut simplifed_mesh: Mesh = vertex_cluster(&mesh, 0.2);
     simplifed_mesh.export_obj(
         format!("examples/assets/simplified_{}.obj", file).as_str(),
         "",
     )?;
-    simplifed_mesh.material.diffuse_constant = Vec3::ONE;
-    simplifed_mesh.move_origin_to(Vec3::NEG_X * 5.0);
+    simplifed_mesh.material.diffuse_constant = Vec3::X;
+    simplifed_mesh.move_origin_to(Vec3::NEG_X * 5.5);
 
     let mut cam_pos: Vec3 = Vec3::new(1.0, 1.0, 1.0) * 20.0;
     let camera: Camera = Camera::new(
