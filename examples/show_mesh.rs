@@ -9,9 +9,6 @@ use termgl::{
 };
 
 fn main() -> io::Result<()> {
-    let mut meshes: Vec<Mesh> = Mesh::import_obj("examples/assets/car.obj", None)?;
-    meshes[0].no_shade = false;
-
     let light_source_0: PointLightSource = PointLightSource::new(
         Vec3::X * 20.0,
         None,
@@ -52,15 +49,23 @@ fn main() -> io::Result<()> {
         termgl::graphics::LightSourceShadingMode::Lambertian,
     );
 
+    let args: Vec<String> = std::env::args().collect();
+    let file: &str = args[1].as_str();
+    let mut meshes: Vec<Mesh> =
+        Mesh::import_obj(format!("examples/assets/{}.obj", file).as_str(), None)?;
+    meshes[0].no_shade = false;
     let mut mesh: Mesh = meshes.remove(0);
     mesh.move_origin_to(Vec3::X * 5.0);
     mesh.scale_to(50.0, 20.0, 20.0);
     let mut simplifed_mesh: Mesh = vertex_cluster(&mesh, 0.2);
-    simplifed_mesh.export_obj("examples/assets/simplified_male.obj", "")?;
+    simplifed_mesh.export_obj(
+        format!("examples/assets/simplified_{}.obj", file).as_str(),
+        "",
+    )?;
     simplifed_mesh.material.diffuse_constant = Vec3::ONE;
     simplifed_mesh.move_origin_to(Vec3::NEG_X * 5.0);
 
-    let mut cam_pos: Vec3 = Vec3::Z * 20.0;
+    let mut cam_pos: Vec3 = Vec3::new(1.0, 1.0, 1.0) * 20.0;
     let camera: Camera = Camera::new(
         Vec3::Y.extend(0.0),
         -cam_pos.normalize().extend(0.0),
