@@ -39,8 +39,8 @@ impl Vertex {
         }
     }
     pub fn from_vec4(pos: Vec4) -> Self {
-        assert!(pos.w == 1.0, "default position w must be 1.0");
-        Self { pos }
+        assert!(pos.w != 0.0, "default position w must be non zero");
+        Self { pos: pos / pos.w }
     }
     pub fn to_vec3(&self) -> Vec3 {
         self.pos.xyz() / self.pos.w

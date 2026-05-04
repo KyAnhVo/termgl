@@ -137,19 +137,6 @@ impl Mesh {
     /// Adds a triangle to the mesh by pushing its vertex indices to the EBO.
     ///
     pub fn add_triangle(&mut self, a: VertexIndices, b: VertexIndices, c: VertexIndices) {
-        let vertices_len: usize = self.vertices.len();
-        let uv_len: usize = self.uv.len();
-        let normals_len: usize = self.normals.len();
-        assert!(
-            a.vertex_ind < vertices_len
-                && b.vertex_ind < vertices_len
-                && c.vertex_ind < vertices_len,
-        );
-        assert!(a.uv_ind < uv_len && b.uv_ind < uv_len && c.uv_ind < uv_len,);
-        assert!(
-            a.normal_ind < normals_len && b.normal_ind < normals_len && c.normal_ind < normals_len,
-        );
-
         // pretty much assume the compiler will optimize this
         // with even the lowest level of optimization
         self.triangles.append(&mut vec![a, b, c]);
@@ -391,22 +378,277 @@ impl Mesh {
     ///
     /// Note: No clashing material names between mtl files. Undefined behaviour.
     /// Note: Does not support concave meshes.
-    pub fn import_obj(mesh_path: &str, mtl_paths: Option<Vec<&str>>) -> Vec<Self> {
+    pub fn import_obj(mesh_path: &str, mtl_paths: Option<Vec<&str>>) -> io::Result<Vec<Self>> {
         let mut meshes: Vec<Self> = vec![];
 
         // Read .mtl first, put .mtl files
-        let materials: Option<HashMap<String, Material>> = match &mtl_paths {
+        let materials: HashMap<String, Material> = match &mtl_paths {
             Some(paths) => {
                 let mut mats: HashMap<String, Material> = HashMap::new();
                 for mat_f in paths.iter() {
                     Self::import_mtl(&mut mats, mat_f).ok();
                 }
-                Some(mats)
+                mats.insert(
+                    "DEFAULT".to_string(),
+                    Material::new(Vec3::ONE * 144.0 / 255.0, Vec3::ONE, Vec3::ONE * 0.0, 5.0),
+                );
+
+                mats
             }
-            None => None,
+            None => {
+                let mut mats: HashMap<String, Material> = HashMap::new();
+                mats.insert(
+                    "DEFAULT".to_string(),
+                    Material::new(Vec3::ONE * 144.0 / 255.0, Vec3::ONE, Vec3::ONE * 0.0, 5.0),
+                );
+                mats
+            }
         };
 
-        meshes
+        let mut vertices: Vec<Vertex> = vec![];
+        let mut uvs: Vec<Vec2> = vec![];
+        let mut normals: Vec<Vec4> = vec![];
+
+        let mut material_name: String = "DEFAULT".to_string();
+        let mut mat_mesh_map: HashMap<String, Vec<VertexIndices>> = HashMap::new();
+        mat_mesh_map.insert("DEFAULT".to_string(), vec![]);
+
+        let file: File = File::open(mesh_path)?;
+        for line in BufReader::new(file).lines() {
+            Self::import_mesh_line_process(
+                &mtl_paths,
+                &mut vertices,
+                &mut uvs,
+                &mut normals,
+                &mut material_name,
+                &mut mat_mesh_map,
+                line,
+            )?;
+        }
+
+        for k in materials.keys() {
+            let Some(tris) = mat_mesh_map.get(k).filter(|t| !t.is_empty()) else {
+                continue;
+            };
+            let mut mesh: Self = Self::new(materials[k], false);
+            mesh.vertices = vertices.clone();
+            mesh.uv = uvs.clone();
+            mesh.normals = normals.clone();
+            mesh.triangles = tris.clone();
+            meshes.push(mesh);
+        }
+
+        Ok(meshes)
+    }
+
+    fn import_mesh_line_process(
+        mtl_paths: &Option<Vec<&str>>,
+        vertices: &mut Vec<Vertex>,
+        uvs: &mut Vec<Vec2>,
+        normals: &mut Vec<Vec4>,
+        material_name: &mut String,
+        mat_mesh_map: &mut HashMap<String, Vec<VertexIndices>>,
+        line: io::Result<String>,
+    ) -> io::Result<()> {
+        let line_str: String = line?;
+        if line_str.is_empty() {
+            return Ok(());
+        }
+        let parts: Vec<&str> = line_str.split_whitespace().collect();
+        if parts.is_empty() {
+            return Ok(());
+        }
+
+        if parts[0] == "v" {
+            let x: f32 = parts[1].parse::<f32>().unwrap();
+            let y: f32 = parts[2].parse::<f32>().unwrap();
+            let z: f32 = parts[3].parse::<f32>().unwrap();
+            let w: f32 = if parts.len() == 4 {
+                1.0
+            } else {
+                parts[4].parse::<f32>().unwrap()
+            };
+            vertices.push(Vertex::from_vec4(Vec4::new(x, y, z, w)));
+            return Ok(());
+        } else if parts[0] == "vt" {
+            let u: f32 = parts[1].parse::<f32>().unwrap();
+            let v: f32 = parts[2].parse::<f32>().unwrap();
+            uvs.push(Vec2::new(u, v));
+            return Ok(());
+        } else if parts[0] == "vn" {
+            let dx: f32 = parts[1].parse::<f32>().unwrap();
+            let dy: f32 = parts[2].parse::<f32>().unwrap();
+            let dz: f32 = parts[3].parse::<f32>().unwrap();
+            normals.push(Vec4::new(dx, dy, dz, 0.0));
+            return Ok(());
+        } else {
+            match &mtl_paths {
+                Some(_) => {
+                    if parts[0] == "usemtl" {
+                        *material_name = parts[1].to_string();
+                        if !mat_mesh_map.contains_key(material_name) {
+                            mat_mesh_map.insert(material_name.clone(), vec![]);
+                        }
+                    } else if parts[0] == "f" {
+                        let mut v_str: Vec<Vec<&str>> = vec![];
+                        for i in 1..parts.len() {
+                            v_str.push(parts[i].split('/').collect());
+                        }
+                        let mut v_pos_indices: Vec<usize> = vec![];
+                        for i in 0..v_str.len() {
+                            v_pos_indices.push(v_str[i][0].parse::<usize>().unwrap() - 1);
+                        }
+                        let mut v: Vec<Vec3> = vec![];
+                        for i in 0..v_pos_indices.len() {
+                            v.push(vertices[v_pos_indices[i]].to_vec3());
+                        }
+                        // Construct vertex indices
+                        // Cases:
+                        // - v       -> v, default, default
+                        // - v/vt    -> v, vt, default
+                        // - v//vn   -> v, default, vn
+                        // - v/vt/vn -> v, vt, vn
+
+                        let default_uv: Vec2 = Vec2::ZERO;
+                        let default_normal: Vec4 =
+                            (v[1] - v[0]).cross(v[2] - v[0]).normalize().extend(0.0);
+
+                        let mut v_indices_vec: Vec<VertexIndices> = vec![];
+                        if v_str[0].len() == 1 {
+                            // Case: v
+                            uvs.push(default_uv);
+                            normals.push(default_normal);
+                            for i in 0..v_str.len() {
+                                v_indices_vec.push(VertexIndices::new(
+                                    v_pos_indices[i],
+                                    normals.len() - 1,
+                                    uvs.len() - 1,
+                                ));
+                            }
+                        } else if v_str[0].len() == 2 {
+                            // Case: v/vt
+                            normals.push(default_normal);
+                            for i in 0..v_str.len() {
+                                v_indices_vec.push(VertexIndices::new(
+                                    v_pos_indices[i],
+                                    normals.len() - 1,
+                                    v_str[i][1].parse::<usize>().unwrap() - 1,
+                                ))
+                            }
+                        } else if v_str[0][1].len() == 0 {
+                            // Case: v//vn
+                            uvs.push(default_uv);
+                            for i in 0..v_str.len() {
+                                v_indices_vec.push(VertexIndices::new(
+                                    v_pos_indices[i],
+                                    v_str[i][2].parse::<usize>().unwrap() - 1,
+                                    uvs.len() - 1,
+                                ));
+                            }
+                        } else {
+                            // Case: v/vt/vn
+                            for i in 0..v_str.len() {
+                                v_indices_vec.push(VertexIndices::new(
+                                    v_pos_indices[i],
+                                    v_str[i][2].parse::<usize>().unwrap() - 1,
+                                    v_str[i][1].parse::<usize>().unwrap() - 1,
+                                ));
+                            }
+                        }
+
+                        let triangulized_faces: Vec<VertexIndices> =
+                            Self::ear_clipping(&vertices, &mut v_indices_vec);
+                        for indices in &triangulized_faces {
+                            mat_mesh_map
+                                .get_mut(material_name)
+                                .unwrap()
+                                .push(indices.clone());
+                        }
+                    }
+
+                    Ok(())
+                }
+                None => {
+                    if parts[0] == "f" {
+                        let mut v_str: Vec<Vec<&str>> = vec![];
+                        for i in 1..parts.len() {
+                            v_str.push(parts[i].split('/').collect());
+                        }
+                        let mut v_pos_indices: Vec<usize> = vec![];
+                        for i in 0..v_str.len() {
+                            v_pos_indices.push(v_str[i][0].parse::<usize>().unwrap() - 1);
+                        }
+                        let mut v: Vec<Vec3> = vec![];
+                        for i in 0..v_pos_indices.len() {
+                            v.push(vertices[v_pos_indices[i]].to_vec3());
+                        }
+                        // Construct vertex indices
+                        // Cases:
+                        // - v       -> v, default, default
+                        // - v/vt    -> v, vt, default
+                        // - v//vn   -> v, default, vn
+                        // - v/vt/vn -> v, vt, vn
+
+                        let default_uv: Vec2 = Vec2::ZERO;
+                        let default_normal: Vec4 =
+                            (v[1] - v[0]).cross(v[2] - v[0]).normalize().extend(0.0);
+
+                        let mut v_indices_vec: Vec<VertexIndices> = vec![];
+                        if v_str[0].len() == 1 {
+                            // Case: v
+                            uvs.push(default_uv);
+                            normals.push(default_normal);
+                            for i in 0..v_str.len() {
+                                v_indices_vec.push(VertexIndices::new(
+                                    v_pos_indices[i],
+                                    normals.len() - 1,
+                                    uvs.len() - 1,
+                                ));
+                            }
+                        } else if v_str[0].len() == 2 {
+                            // Case: v/vt
+                            normals.push(default_normal);
+                            for i in 0..v_str.len() {
+                                v_indices_vec.push(VertexIndices::new(
+                                    v_pos_indices[i],
+                                    normals.len() - 1,
+                                    v_str[i][1].parse::<usize>().unwrap() - 1,
+                                ))
+                            }
+                        } else if v_str[0][1].len() == 0 {
+                            // Case: v//vn
+                            uvs.push(default_uv);
+                            for i in 0..v_str.len() {
+                                v_indices_vec.push(VertexIndices::new(
+                                    v_pos_indices[i],
+                                    v_str[i][2].parse::<usize>().unwrap() - 1,
+                                    uvs.len() - 1,
+                                ));
+                            }
+                        } else {
+                            // Case: v/vt/vn
+                            for i in 0..v_str.len() {
+                                v_indices_vec.push(VertexIndices::new(
+                                    v_pos_indices[i],
+                                    v_str[i][2].parse::<usize>().unwrap() - 1,
+                                    v_str[i][1].parse::<usize>().unwrap() - 1,
+                                ));
+                            }
+                        }
+                        let triangulized_faces: Vec<VertexIndices> =
+                            Self::ear_clipping(&vertices, &mut v_indices_vec);
+
+                        for indices in &triangulized_faces {
+                            mat_mesh_map
+                                .get_mut(&"DEFAULT".to_string())
+                                .unwrap()
+                                .push(*indices);
+                        }
+                    }
+                    Ok(())
+                }
+            }
+        }
     }
 
     /// Exports mesh into an obj format, with an optional mtl path. If mtl path is empty
@@ -429,7 +671,7 @@ impl Mesh {
                 let material: Material = self.material;
                 let kd: Vec3 = material.diffuse_constant;
                 let ks: Vec3 = material.specular_constant;
-                let ka: Vec3 = kd * material.ambient_constant;
+                let ka: Vec3 = material.ambient_constant;
                 let ns: f32 = material.specular_exponent.min(1000.0).max(0.0);
 
                 writeln!(writer, "newmtl material")?;
@@ -595,5 +837,70 @@ impl Mesh {
         }
 
         Ok(())
+    }
+
+    fn ear_clipping(vertices: &Vec<Vertex>, face: &mut Vec<VertexIndices>) -> Vec<VertexIndices> {
+        let mut triangles: Vec<VertexIndices> = vec![];
+
+        // Calculate the normal of the overall plane
+        let mut normal: Vec3 = Vec3::ZERO;
+        let n: usize = face.len();
+        for i in 0..n {
+            let (i0, i1, i2): (usize, usize, usize) = (i, (i + 1) % n, (i + 2) % n);
+            let (vi0, vi1, vi2): (VertexIndices, VertexIndices, VertexIndices) =
+                (face[i0], face[i1], face[i2]);
+            let (v0, v1, v2): (Vec3, Vec3, Vec3) = (
+                vertices[vi0.vertex_ind].to_vec3(),
+                vertices[vi1.vertex_ind].to_vec3(),
+                vertices[vi2.vertex_ind].to_vec3(),
+            );
+            normal += (v1 - v0).cross(v2 - v0);
+        }
+        normal = normal.normalize();
+
+        while face.len() >= 3 {
+            let n: usize = face.len();
+            for i in 0..n {
+                let (i0, i1, i2): (usize, usize, usize) = (i, (i + 1) % n, (i + 2) % n);
+                let (vi0, vi1, vi2): (VertexIndices, VertexIndices, VertexIndices) =
+                    (face[i0], face[i1], face[i2]);
+                let (v0, v1, v2): (Vec3, Vec3, Vec3) = (
+                    vertices[vi0.vertex_ind].to_vec3(),
+                    vertices[vi1.vertex_ind].to_vec3(),
+                    vertices[vi2.vertex_ind].to_vec3(),
+                );
+                if normal.dot((v1 - v0).cross(v2 - v0)) <= 0.0 {
+                    continue;
+                }
+                let mut is_ear: bool = true;
+                for ind in 0..n {
+                    if ind == i0 || ind == i1 || ind == i2 {
+                        continue;
+                    }
+                    let vi: VertexIndices = face[ind];
+                    let v: Vec3 = vertices[vi.vertex_ind].to_vec3();
+                    let n0: Vec3 = (v1 - v0).cross(v - v0);
+                    let n1: Vec3 = (v2 - v1).cross(v - v1);
+                    let n2: Vec3 = (v0 - v2).cross(v - v2);
+                    if n0.dot(normal) >= 0.0 && n1.dot(normal) >= 0.0 && n2.dot(normal) >= 0.0 {
+                        is_ear = false;
+                        break;
+                    }
+                }
+
+                if is_ear {
+                    // emit (push) triangle
+                    triangles.push(vi0);
+                    triangles.push(vi1);
+                    triangles.push(vi2);
+
+                    // remove middle vertex from vertices
+                    face.remove(i1);
+                    break;
+                }
+            }
+        }
+
+        triangles
     }
 }
