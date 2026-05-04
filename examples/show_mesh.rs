@@ -101,7 +101,7 @@ fn main() -> io::Result<()> {
 
         let elapsed = start.elapsed();
         sleep(
-            time::Duration::from_millis(10)
+            time::Duration::from_millis(30)
                 .checked_sub(elapsed)
                 .unwrap_or_default(),
         );
