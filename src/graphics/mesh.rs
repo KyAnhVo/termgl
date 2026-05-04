@@ -896,7 +896,8 @@ impl Mesh {
 
         let mut earclip_fail: bool = false;
         while copied_face.len() >= 3 {
-            let n: usize = face.len();
+            let n: usize = copied_face.len();
+            let mut ear_clip_success: bool = false;
             for i in 0..n {
                 let (i0, i1, i2): (usize, usize, usize) = (i, (i + 1) % n, (i + 2) % n);
                 let (vi0, vi1, vi2): (VertexIndices, VertexIndices, VertexIndices) =
@@ -933,8 +934,13 @@ impl Mesh {
 
                     // remove middle vertex from vertices
                     copied_face.remove(i1);
+                    ear_clip_success = true;
                     break;
                 }
+            }
+
+            if ear_clip_success {
+                continue;
             }
 
             earclip_fail = true;

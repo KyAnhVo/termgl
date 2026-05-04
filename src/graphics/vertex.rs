@@ -74,6 +74,8 @@ impl RasterVertex {
         let pb: Vec2 = b.pos.xy();
         let pc: Vec2 = c.pos.xy();
 
+        return false;
+
         // gte because higher z => further from screen
         (pb - pa).perp_dot(pc - pa) <= 0.0
     }
