@@ -142,6 +142,39 @@ impl Mesh {
         self.triangles.append(&mut vec![a, b, c]);
     }
 
+    pub fn scale_by(&mut self, scale_factor: f32) {
+        for vertex in &mut self.vertices {
+            let w: f32 = vertex.pos.w;
+            vertex.pos *= scale_factor;
+            vertex.pos.w = w;
+        }
+    }
+
+    pub fn scale_to(&mut self, box_x: f32, box_y: f32, box_z: f32) {
+        let (mut x_min, mut x_max): (f32, f32) = (f32::INFINITY, f32::NEG_INFINITY);
+        let (mut y_min, mut y_max): (f32, f32) = (f32::INFINITY, f32::NEG_INFINITY);
+        let (mut z_min, mut z_max): (f32, f32) = (f32::INFINITY, f32::NEG_INFINITY);
+
+        for vertex in &self.vertices {
+            let (x, y, z): (f32, f32, f32) = (
+                vertex.pos.x / vertex.pos.w,
+                vertex.pos.y / vertex.pos.w,
+                vertex.pos.z / vertex.pos.w,
+            );
+
+            x_min = x_min.min(x);
+            x_max = x_max.max(x);
+            y_min = y_min.min(y);
+            y_max = y_max.max(y);
+            z_min = z_min.min(z);
+            z_max = z_max.max(z);
+        }
+
+        let (dx, dy, dz): (f32, f32, f32) = (x_max - x_min, y_max - y_min, z_max - z_min);
+        let (sx, sy, sz): (f32, f32, f32) = (box_x / dx, box_y / dy, box_z / dz);
+        self.scale_by(sx.min(sy).min(sz));
+    }
+
     /// Finalize the mesh before rendering. Must call.
     pub fn finalize_mesh(&mut self) {
         if self.no_change {
@@ -414,10 +447,7 @@ impl Mesh {
         mat_mesh_map.insert("DEFAULT".to_string(), vec![]);
 
         let file: File = File::open(mesh_path)?;
-        let mut line_count: usize = 0;
         for line in BufReader::new(file).lines() {
-            println!("{}", line_count);
-            line_count += 1;
             Self::import_mesh_line_process(
                 &mtl_paths,
                 &mut vertices,
@@ -428,6 +458,7 @@ impl Mesh {
                 line,
             )?;
         }
+        println!("Complete setting up");
 
         for k in materials.keys() {
             let Some(tris) = mat_mesh_map.get(k).filter(|t| !t.is_empty()) else {
@@ -842,8 +873,10 @@ impl Mesh {
         Ok(())
     }
 
-    fn ear_clipping(vertices: &Vec<Vertex>, face: &mut Vec<VertexIndices>) -> Vec<VertexIndices> {
+    fn ear_clipping(vertices: &Vec<Vertex>, face: &Vec<VertexIndices>) -> Vec<VertexIndices> {
         let mut triangles: Vec<VertexIndices> = vec![];
+
+        let mut copied_face = face.clone();
 
         // Calculate the normal of the overall plane
         let mut normal: Vec3 = Vec3::ZERO;
@@ -861,12 +894,13 @@ impl Mesh {
         }
         normal = normal.normalize();
 
-        while face.len() >= 3 {
+        let mut earclip_fail: bool = false;
+        while copied_face.len() >= 3 {
             let n: usize = face.len();
             for i in 0..n {
                 let (i0, i1, i2): (usize, usize, usize) = (i, (i + 1) % n, (i + 2) % n);
                 let (vi0, vi1, vi2): (VertexIndices, VertexIndices, VertexIndices) =
-                    (face[i0], face[i1], face[i2]);
+                    (copied_face[i0], copied_face[i1], copied_face[i2]);
                 let (v0, v1, v2): (Vec3, Vec3, Vec3) = (
                     vertices[vi0.vertex_ind].to_vec3(),
                     vertices[vi1.vertex_ind].to_vec3(),
@@ -880,7 +914,7 @@ impl Mesh {
                     if ind == i0 || ind == i1 || ind == i2 {
                         continue;
                     }
-                    let vi: VertexIndices = face[ind];
+                    let vi: VertexIndices = copied_face[ind];
                     let v: Vec3 = vertices[vi.vertex_ind].to_vec3();
                     let n0: Vec3 = (v1 - v0).cross(v - v0);
                     let n1: Vec3 = (v2 - v1).cross(v - v1);
@@ -898,9 +932,22 @@ impl Mesh {
                     triangles.push(vi2);
 
                     // remove middle vertex from vertices
-                    face.remove(i1);
+                    copied_face.remove(i1);
                     break;
                 }
+            }
+
+            earclip_fail = true;
+            break;
+        }
+
+        if earclip_fail {
+            // implement fanning
+            triangles.clear();
+            for i in 1..(face.len() - 1) {
+                triangles.push(face[0]);
+                triangles.push(face[i]);
+                triangles.push(face[i + 1]);
             }
         }
 
