@@ -56,6 +56,18 @@ impl Camera {
         }
     }
 
+    pub fn look_at(&mut self, at: Vec3, from: Vec3, up: Vec3) {
+        let mut up3: Vec3 = up.normalize();
+        let gaze3: Vec3 = (at - from).normalize();
+        let right3: Vec3 = up3.cross(gaze3).normalize();
+        up3 = gaze3.cross(right3).normalize();
+
+        self.up = up3.extend(0.0);
+        self.right = right3.extend(0.0);
+        self.gaze = gaze3.extend(0.0);
+        self.pos = from.extend(1.0);
+    }
+
     pub fn resize(&mut self, width: usize, height: usize) {
         self.aspect_ratio = width as f32 / (height as f32);
     }

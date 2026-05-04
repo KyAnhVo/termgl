@@ -66,8 +66,8 @@ impl PointLightSource {
     ) -> Vec3 {
         let kd: Vec3 = color;
         let ks: Vec3 = material.specular_constant;
-        let ka: Vec3 = color * material.ambient_constant;
-        let p: f32 = material.specular_exponent;
+        let ka: Vec3 = material.ambient_constant;
+        let ns: f32 = material.specular_exponent;
 
         let n: Vec3 = normal.xyz();
         let v: Vec3 = (cam.pos.xyz() - pos).normalize();
@@ -82,7 +82,7 @@ impl PointLightSource {
 
         let ambient_term: Vec3 = ka * ia;
         let diffuse_term: Vec3 = kd * (id / r2) * n.dot(l).max(0.0);
-        let specular_term: Vec3 = ks * (is / r2) * n.dot(h).max(0.0).powf(p);
+        let specular_term: Vec3 = ks * (is / r2) * n.dot(h).max(0.0).powf(ns);
 
         let color: Vec3 = ambient_term + diffuse_term + specular_term;
         Vec3::new(

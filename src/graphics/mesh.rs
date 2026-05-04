@@ -4,7 +4,18 @@ use crate::graphics::{
     vertex::{Material, RasterVertex, Vertex},
 };
 use glam::{Mat3, Mat4, Vec2, Vec3, Vec4, Vec4Swizzles};
-use std::f32::consts::PI;
+use std::{
+    collections::HashMap,
+    io::{self, Lines},
+    path::Path,
+    str::FromStr,
+};
+use std::{
+    f32::consts::PI,
+    fs::File,
+    io::{BufRead, BufReader, Read},
+    io::{BufWriter, Write},
+};
 
 /// a 3-tuple of indices of vertex, normal, and uv
 #[derive(Clone, Copy)]
@@ -73,9 +84,6 @@ pub struct Mesh {
     /// 2D game with no shading, or a light source)
     pub no_shade: bool,
 
-    /// default color if no uv mapping
-    pub default_color: Vec3,
-
     /// finalize normals essentially transforms the normal to world space.
     /// So if  no movement/spinning, it still is in that same position,
     /// thus we use this var to indicate if it has changed.
@@ -99,7 +107,6 @@ impl Mesh {
             height_map: None,
             normal_map: None,
             no_shade,
-            default_color: Vec3::new(144.0, 144.0, 144.0) / 255.0,
             no_change: false,
         }
     }
@@ -130,22 +137,42 @@ impl Mesh {
     /// Adds a triangle to the mesh by pushing its vertex indices to the EBO.
     ///
     pub fn add_triangle(&mut self, a: VertexIndices, b: VertexIndices, c: VertexIndices) {
-        let vertices_len: usize = self.vertices.len();
-        let uv_len: usize = self.uv.len();
-        let normals_len: usize = self.normals.len();
-        assert!(
-            a.vertex_ind < vertices_len
-                && b.vertex_ind < vertices_len
-                && c.vertex_ind < vertices_len,
-        );
-        assert!(a.uv_ind < uv_len && b.uv_ind < uv_len && c.uv_ind < uv_len,);
-        assert!(
-            a.normal_ind < normals_len && b.normal_ind < normals_len && c.normal_ind < normals_len,
-        );
-
         // pretty much assume the compiler will optimize this
         // with even the lowest level of optimization
         self.triangles.append(&mut vec![a, b, c]);
+    }
+
+    pub fn scale_by(&mut self, scale_factor: f32) {
+        for vertex in &mut self.vertices {
+            let w: f32 = vertex.pos.w;
+            vertex.pos *= scale_factor;
+            vertex.pos.w = w;
+        }
+    }
+
+    pub fn scale_to(&mut self, box_x: f32, box_y: f32, box_z: f32) {
+        let (mut x_min, mut x_max): (f32, f32) = (f32::INFINITY, f32::NEG_INFINITY);
+        let (mut y_min, mut y_max): (f32, f32) = (f32::INFINITY, f32::NEG_INFINITY);
+        let (mut z_min, mut z_max): (f32, f32) = (f32::INFINITY, f32::NEG_INFINITY);
+
+        for vertex in &self.vertices {
+            let (x, y, z): (f32, f32, f32) = (
+                vertex.pos.x / vertex.pos.w,
+                vertex.pos.y / vertex.pos.w,
+                vertex.pos.z / vertex.pos.w,
+            );
+
+            x_min = x_min.min(x);
+            x_max = x_max.max(x);
+            y_min = y_min.min(y);
+            y_max = y_max.max(y);
+            z_min = z_min.min(z);
+            z_max = z_max.max(z);
+        }
+
+        let (dx, dy, dz): (f32, f32, f32) = (x_max - x_min, y_max - y_min, z_max - z_min);
+        let (sx, sy, sz): (f32, f32, f32) = (box_x / dx, box_y / dy, box_z / dz);
+        self.scale_by(sx.min(sy).min(sz));
     }
 
     /// Finalize the mesh before rendering. Must call.
@@ -246,17 +273,19 @@ impl Mesh {
     }
 }
 
+//////////////////////////////////////////////////
+/// default meshes ///////////////////////////////
+//////////////////////////////////////////////////
+
 impl Mesh {
     pub fn create_sphere(
         rad: f32,
         origin: Vec3,
         material: Material,
-        color: Vec3,
         lat: usize,
         long: usize,
     ) -> Mesh {
         let mut mesh: Mesh = Mesh::new(material, false);
-        mesh.default_color = color;
         mesh.move_origin_to(origin);
 
         // vertices + normals + uvs
@@ -310,13 +339,11 @@ impl Mesh {
         r_out: f32,
         origin: Vec3,
         material: Material,
-        color: Vec3,
         d_theta: f32,
     ) -> Self {
         assert!(r_in > 0.0 && r_out > r_in, "invalid ring radii");
 
         let mut mesh: Mesh = Mesh::new(material, false);
-        mesh.default_color = color;
         mesh.move_origin_to(origin);
 
         let n: usize = (2.0 * PI / d_theta).round().max(3.0) as usize;
@@ -372,5 +399,558 @@ impl Mesh {
         }
 
         mesh
+    }
+}
+
+////////////////////////////////////////////
+/// Mesh IO ////////////////////////////////
+////////////////////////////////////////////
+
+impl Mesh {
+    /// Import a mesh using obj with potentially multiple mtl files.
+    ///
+    /// Note: No clashing material names between mtl files. Undefined behaviour.
+    /// Note: Does not support concave meshes.
+    pub fn import_obj(mesh_path: &str, mtl_paths: Option<Vec<&str>>) -> io::Result<Vec<Self>> {
+        let mut meshes: Vec<Self> = vec![];
+
+        // Read .mtl first, put .mtl files
+        let materials: HashMap<String, Material> = match &mtl_paths {
+            Some(paths) => {
+                let mut mats: HashMap<String, Material> = HashMap::new();
+                for mat_f in paths.iter() {
+                    Self::import_mtl(&mut mats, mat_f).ok();
+                }
+                mats.insert(
+                    "DEFAULT".to_string(),
+                    Material::new(Vec3::ONE * 144.0 / 255.0, Vec3::ONE, Vec3::ONE * 0.0, 5.0),
+                );
+
+                mats
+            }
+            None => {
+                let mut mats: HashMap<String, Material> = HashMap::new();
+                mats.insert(
+                    "DEFAULT".to_string(),
+                    Material::new(Vec3::ONE * 144.0 / 255.0, Vec3::ONE, Vec3::ONE * 0.0, 5.0),
+                );
+                mats
+            }
+        };
+
+        let mut vertices: Vec<Vertex> = vec![];
+        let mut uvs: Vec<Vec2> = vec![];
+        let mut normals: Vec<Vec4> = vec![];
+
+        let mut material_name: String = "DEFAULT".to_string();
+        let mut mat_mesh_map: HashMap<String, Vec<VertexIndices>> = HashMap::new();
+        mat_mesh_map.insert("DEFAULT".to_string(), vec![]);
+
+        let file: File = File::open(mesh_path)?;
+        for line in BufReader::new(file).lines() {
+            Self::import_mesh_line_process(
+                &mtl_paths,
+                &mut vertices,
+                &mut uvs,
+                &mut normals,
+                &mut material_name,
+                &mut mat_mesh_map,
+                line,
+            )?;
+        }
+        println!("Complete setting up");
+
+        for k in materials.keys() {
+            let Some(tris) = mat_mesh_map.get(k).filter(|t| !t.is_empty()) else {
+                continue;
+            };
+            let mut mesh: Self = Self::new(materials[k], false);
+            mesh.vertices = vertices.clone();
+            mesh.uv = uvs.clone();
+            mesh.normals = normals.clone();
+            mesh.triangles = tris.clone();
+            meshes.push(mesh);
+        }
+
+        Ok(meshes)
+    }
+
+    fn import_mesh_line_process(
+        mtl_paths: &Option<Vec<&str>>,
+        vertices: &mut Vec<Vertex>,
+        uvs: &mut Vec<Vec2>,
+        normals: &mut Vec<Vec4>,
+        material_name: &mut String,
+        mat_mesh_map: &mut HashMap<String, Vec<VertexIndices>>,
+        line: io::Result<String>,
+    ) -> io::Result<()> {
+        let line_str: String = line?;
+        if line_str.is_empty() {
+            return Ok(());
+        }
+        let parts: Vec<&str> = line_str.split_whitespace().collect();
+        if parts.is_empty() {
+            return Ok(());
+        }
+
+        if parts[0] == "v" {
+            let x: f32 = parts[1].parse::<f32>().unwrap();
+            let y: f32 = parts[2].parse::<f32>().unwrap();
+            let z: f32 = parts[3].parse::<f32>().unwrap();
+            let w: f32 = if parts.len() == 4 {
+                1.0
+            } else {
+                parts[4].parse::<f32>().unwrap()
+            };
+            vertices.push(Vertex::from_vec4(Vec4::new(x, y, z, w)));
+            return Ok(());
+        } else if parts[0] == "vt" {
+            let u: f32 = parts[1].parse::<f32>().unwrap();
+            let v: f32 = parts[2].parse::<f32>().unwrap();
+            uvs.push(Vec2::new(u, v));
+            return Ok(());
+        } else if parts[0] == "vn" {
+            let dx: f32 = parts[1].parse::<f32>().unwrap();
+            let dy: f32 = parts[2].parse::<f32>().unwrap();
+            let dz: f32 = parts[3].parse::<f32>().unwrap();
+            normals.push(Vec4::new(dx, dy, dz, 0.0));
+            return Ok(());
+        } else {
+            match &mtl_paths {
+                Some(_) => {
+                    if parts[0] == "usemtl" {
+                        *material_name = parts[1].to_string();
+                        if !mat_mesh_map.contains_key(material_name) {
+                            mat_mesh_map.insert(material_name.clone(), vec![]);
+                        }
+                    } else if parts[0] == "f" {
+                        let mut v_str: Vec<Vec<&str>> = vec![];
+                        for i in 1..parts.len() {
+                            v_str.push(parts[i].split('/').collect());
+                        }
+                        let mut v_pos_indices: Vec<usize> = vec![];
+                        for i in 0..v_str.len() {
+                            v_pos_indices.push(v_str[i][0].parse::<usize>().unwrap() - 1);
+                        }
+                        let mut v: Vec<Vec3> = vec![];
+                        for i in 0..v_pos_indices.len() {
+                            v.push(vertices[v_pos_indices[i]].to_vec3());
+                        }
+                        // Construct vertex indices
+                        // Cases:
+                        // - v       -> v, default, default
+                        // - v/vt    -> v, vt, default
+                        // - v//vn   -> v, default, vn
+                        // - v/vt/vn -> v, vt, vn
+
+                        let default_uv: Vec2 = Vec2::ZERO;
+                        let default_normal: Vec4 =
+                            (v[1] - v[0]).cross(v[2] - v[0]).normalize().extend(0.0);
+
+                        let mut v_indices_vec: Vec<VertexIndices> = vec![];
+                        if v_str[0].len() == 1 {
+                            // Case: v
+                            uvs.push(default_uv);
+                            normals.push(default_normal);
+                            for i in 0..v_str.len() {
+                                v_indices_vec.push(VertexIndices::new(
+                                    v_pos_indices[i],
+                                    normals.len() - 1,
+                                    uvs.len() - 1,
+                                ));
+                            }
+                        } else if v_str[0].len() == 2 {
+                            // Case: v/vt
+                            normals.push(default_normal);
+                            for i in 0..v_str.len() {
+                                v_indices_vec.push(VertexIndices::new(
+                                    v_pos_indices[i],
+                                    normals.len() - 1,
+                                    v_str[i][1].parse::<usize>().unwrap() - 1,
+                                ))
+                            }
+                        } else if v_str[0][1].len() == 0 {
+                            // Case: v//vn
+                            uvs.push(default_uv);
+                            for i in 0..v_str.len() {
+                                v_indices_vec.push(VertexIndices::new(
+                                    v_pos_indices[i],
+                                    v_str[i][2].parse::<usize>().unwrap() - 1,
+                                    uvs.len() - 1,
+                                ));
+                            }
+                        } else {
+                            // Case: v/vt/vn
+                            for i in 0..v_str.len() {
+                                v_indices_vec.push(VertexIndices::new(
+                                    v_pos_indices[i],
+                                    v_str[i][2].parse::<usize>().unwrap() - 1,
+                                    v_str[i][1].parse::<usize>().unwrap() - 1,
+                                ));
+                            }
+                        }
+
+                        let triangulized_faces: Vec<VertexIndices> =
+                            Self::ear_clipping(&vertices, &mut v_indices_vec);
+                        for indices in &triangulized_faces {
+                            mat_mesh_map
+                                .get_mut(material_name)
+                                .unwrap()
+                                .push(indices.clone());
+                        }
+                    }
+
+                    Ok(())
+                }
+                None => {
+                    if parts[0] == "f" {
+                        let mut v_str: Vec<Vec<&str>> = vec![];
+                        for i in 1..parts.len() {
+                            v_str.push(parts[i].split('/').collect());
+                        }
+                        let mut v_pos_indices: Vec<usize> = vec![];
+                        for i in 0..v_str.len() {
+                            v_pos_indices.push(v_str[i][0].parse::<usize>().unwrap() - 1);
+                        }
+                        let mut v: Vec<Vec3> = vec![];
+                        for i in 0..v_pos_indices.len() {
+                            v.push(vertices[v_pos_indices[i]].to_vec3());
+                        }
+                        // Construct vertex indices
+                        // Cases:
+                        // - v       -> v, default, default
+                        // - v/vt    -> v, vt, default
+                        // - v//vn   -> v, default, vn
+                        // - v/vt/vn -> v, vt, vn
+
+                        let default_uv: Vec2 = Vec2::ZERO;
+                        let default_normal: Vec4 =
+                            (v[1] - v[0]).cross(v[2] - v[0]).normalize().extend(0.0);
+
+                        let mut v_indices_vec: Vec<VertexIndices> = vec![];
+                        if v_str[0].len() == 1 {
+                            // Case: v
+                            uvs.push(default_uv);
+                            normals.push(default_normal);
+                            for i in 0..v_str.len() {
+                                v_indices_vec.push(VertexIndices::new(
+                                    v_pos_indices[i],
+                                    normals.len() - 1,
+                                    uvs.len() - 1,
+                                ));
+                            }
+                        } else if v_str[0].len() == 2 {
+                            // Case: v/vt
+                            normals.push(default_normal);
+                            for i in 0..v_str.len() {
+                                v_indices_vec.push(VertexIndices::new(
+                                    v_pos_indices[i],
+                                    normals.len() - 1,
+                                    v_str[i][1].parse::<usize>().unwrap() - 1,
+                                ))
+                            }
+                        } else if v_str[0][1].len() == 0 {
+                            // Case: v//vn
+                            uvs.push(default_uv);
+                            for i in 0..v_str.len() {
+                                v_indices_vec.push(VertexIndices::new(
+                                    v_pos_indices[i],
+                                    v_str[i][2].parse::<usize>().unwrap() - 1,
+                                    uvs.len() - 1,
+                                ));
+                            }
+                        } else {
+                            // Case: v/vt/vn
+                            for i in 0..v_str.len() {
+                                v_indices_vec.push(VertexIndices::new(
+                                    v_pos_indices[i],
+                                    v_str[i][2].parse::<usize>().unwrap() - 1,
+                                    v_str[i][1].parse::<usize>().unwrap() - 1,
+                                ));
+                            }
+                        }
+                        let triangulized_faces: Vec<VertexIndices> =
+                            Self::ear_clipping(&vertices, &mut v_indices_vec);
+
+                        for indices in &triangulized_faces {
+                            mat_mesh_map
+                                .get_mut(&"DEFAULT".to_string())
+                                .unwrap()
+                                .push(*indices);
+                        }
+                    }
+                    Ok(())
+                }
+            }
+        }
+    }
+
+    /// Exports mesh into an obj format, with an optional mtl path. If mtl path is empty
+    ///then we don't ship usemtl with obj and don't ship mtl file.
+    pub fn export_obj(&self, mesh_path: &str, mtl_path: &str) -> io::Result<()> {
+        let mesh_file: File = File::create(mesh_path)?;
+        let mut mesh_writer: BufWriter<File> = BufWriter::new(mesh_file);
+
+        let material_file: Option<File> = if mtl_path.len() == 0 {
+            None
+        } else {
+            Some(File::create(mtl_path)?)
+        };
+        let mut material_writer: Option<BufWriter<File>> = match material_file {
+            Some(file) => Some(BufWriter::new(file)),
+            None => None,
+        };
+        match &mut material_writer {
+            Some(writer) => {
+                let material: Material = self.material;
+                let kd: Vec3 = material.diffuse_constant;
+                let ks: Vec3 = material.specular_constant;
+                let ka: Vec3 = material.ambient_constant;
+                let ns: f32 = material.specular_exponent.min(1000.0).max(0.0);
+
+                writeln!(writer, "newmtl material")?;
+                writeln!(writer, "Ka {} {} {}", ka.x, ka.y, ka.z)?;
+                writeln!(writer, "Ks {} {} {}", ks.x, ks.y, ks.z)?;
+                writeln!(writer, "Kd {} {} {}", kd.x, kd.y, kd.z)?;
+                writeln!(writer, "Ns {}", ns)?;
+
+                writeln!(
+                    mesh_writer,
+                    "mtllib {}",
+                    Path::new(mtl_path).file_name().unwrap().to_str().unwrap()
+                )?;
+            }
+            None => {}
+        };
+
+        writeln!(mesh_writer, "\n# Vertices\n")?;
+        for vertex in self.vertices.iter() {
+            writeln!(
+                mesh_writer,
+                "v {} {} {}",
+                vertex.pos.x / vertex.pos.w,
+                vertex.pos.y / vertex.pos.w,
+                vertex.pos.z / vertex.pos.w
+            )?;
+        }
+
+        writeln!(mesh_writer, "\n# uv indices\n")?;
+        for uv in self.uv.iter() {
+            writeln!(mesh_writer, "vt {} {}", uv.x, uv.y)?;
+        }
+
+        writeln!(mesh_writer, "\n# normals\n")?;
+        for normal in self.normals.iter() {
+            writeln!(mesh_writer, "vn {} {} {}", normal.x, normal.y, normal.z)?;
+        }
+
+        writeln!(mesh_writer, "\n# triangles\n")?;
+        match &material_writer {
+            Some(_) => writeln!(mesh_writer, "usemtl material")?,
+            None => {}
+        };
+        for triangle_indices in self.triangles.chunks_exact(3) {
+            let (a_ind, b_ind, c_ind): (VertexIndices, VertexIndices, VertexIndices) = (
+                triangle_indices[0],
+                triangle_indices[1],
+                triangle_indices[2],
+            );
+            writeln!(
+                mesh_writer,
+                "f {}/{}/{} {}/{}/{} {}/{}/{}",
+                a_ind.vertex_ind + 1,
+                a_ind.uv_ind + 1,
+                a_ind.normal_ind + 1,
+                b_ind.vertex_ind + 1,
+                b_ind.uv_ind + 1,
+                b_ind.normal_ind + 1,
+                c_ind.vertex_ind + 1,
+                c_ind.uv_ind + 1,
+                c_ind.normal_ind + 1,
+            )?;
+        }
+
+        Ok(())
+    }
+
+    fn import_mtl(mat_map: &mut HashMap<String, Material>, path: &str) -> io::Result<()> {
+        let kd_default: Vec3 = Vec3::new(144.0, 144.0, 144.0) / 255.0;
+        let ks_default: Vec3 = Vec3::ONE;
+        let ka_default: Vec3 = kd_default * 0.1;
+        let ns_default: f32 = 1.0;
+
+        let mut name: String = String::new();
+        let mut kd: Option<Vec3> = None;
+        let mut ks: Option<Vec3> = None;
+        let mut ka: Option<Vec3> = None;
+        let mut ns: Option<f32> = None;
+
+        let file: File = File::open(path)?;
+        let lines: Lines<BufReader<File>> = BufReader::new(file).lines();
+        for line in lines {
+            let line_str: String = line?;
+            let parts: Vec<&str> = line_str.split_whitespace().collect();
+            if parts.is_empty() {
+                continue;
+            }
+
+            if parts[0] == "newmtl" {
+                // newmtl <name> line
+                // If there is a material already loading, load it in
+                if !name.is_empty() {
+                    mat_map.insert(
+                        name.clone(),
+                        Material::new(
+                            match kd {
+                                Some(kd) => kd,
+                                None => kd_default,
+                            },
+                            match ks {
+                                Some(ks) => ks,
+                                None => ks_default,
+                            },
+                            match ka {
+                                Some(ka) => ka,
+                                None => ka_default,
+                            },
+                            match ns {
+                                Some(ns) => ns,
+                                None => ns_default,
+                            },
+                        ),
+                    );
+                }
+                name = parts[1].to_string();
+                kd = None;
+                ks = None;
+                ka = None;
+                ns = None;
+            } else if parts[0] == "Kd" || parts[0] == "Ks" || parts[0] == "Ka" {
+                // <Ks/Kd/Ka> r g b line
+                // just... add them in.
+                let r: f32 = parts[1].parse::<f32>().unwrap();
+                let g: f32 = parts[2].parse::<f32>().unwrap();
+                let b: f32 = parts[3].parse::<f32>().unwrap();
+                if parts[0] == "Kd" {
+                    kd = Some(Vec3::new(r, g, b));
+                } else if parts[0] == "Ks" {
+                    ks = Some(Vec3::new(r, g, b));
+                } else {
+                    ka = Some(Vec3::new(r, g, b));
+                }
+            } else if parts[0] == "Ns" {
+                // Ns p line
+                // same as above
+                let p: f32 = parts[1].parse::<f32>().unwrap();
+                ns = Some(p);
+            }
+        }
+
+        if !name.is_empty() {
+            mat_map.insert(
+                name.clone(),
+                Material::new(
+                    match kd {
+                        Some(kd) => kd,
+                        None => kd_default,
+                    },
+                    match ks {
+                        Some(ks) => ks,
+                        None => ks_default,
+                    },
+                    match ka {
+                        Some(ka) => ka,
+                        None => ka_default,
+                    },
+                    match ns {
+                        Some(ns) => ns,
+                        None => ns_default,
+                    },
+                ),
+            );
+        }
+
+        Ok(())
+    }
+
+    fn ear_clipping(vertices: &Vec<Vertex>, face: &Vec<VertexIndices>) -> Vec<VertexIndices> {
+        let mut triangles: Vec<VertexIndices> = vec![];
+
+        let mut copied_face = face.clone();
+
+        // Calculate the normal of the overall plane
+        let mut normal: Vec3 = Vec3::ZERO;
+        let n: usize = face.len();
+        for i in 0..n {
+            let (i0, i1, i2): (usize, usize, usize) = (i, (i + 1) % n, (i + 2) % n);
+            let (vi0, vi1, vi2): (VertexIndices, VertexIndices, VertexIndices) =
+                (face[i0], face[i1], face[i2]);
+            let (v0, v1, v2): (Vec3, Vec3, Vec3) = (
+                vertices[vi0.vertex_ind].to_vec3(),
+                vertices[vi1.vertex_ind].to_vec3(),
+                vertices[vi2.vertex_ind].to_vec3(),
+            );
+            normal += (v1 - v0).cross(v2 - v0);
+        }
+        normal = normal.normalize();
+
+        let mut earclip_fail: bool = false;
+        while copied_face.len() >= 3 {
+            let n: usize = face.len();
+            for i in 0..n {
+                let (i0, i1, i2): (usize, usize, usize) = (i, (i + 1) % n, (i + 2) % n);
+                let (vi0, vi1, vi2): (VertexIndices, VertexIndices, VertexIndices) =
+                    (copied_face[i0], copied_face[i1], copied_face[i2]);
+                let (v0, v1, v2): (Vec3, Vec3, Vec3) = (
+                    vertices[vi0.vertex_ind].to_vec3(),
+                    vertices[vi1.vertex_ind].to_vec3(),
+                    vertices[vi2.vertex_ind].to_vec3(),
+                );
+                if normal.dot((v1 - v0).cross(v2 - v0)) <= 0.0 {
+                    continue;
+                }
+                let mut is_ear: bool = true;
+                for ind in 0..n {
+                    if ind == i0 || ind == i1 || ind == i2 {
+                        continue;
+                    }
+                    let vi: VertexIndices = copied_face[ind];
+                    let v: Vec3 = vertices[vi.vertex_ind].to_vec3();
+                    let n0: Vec3 = (v1 - v0).cross(v - v0);
+                    let n1: Vec3 = (v2 - v1).cross(v - v1);
+                    let n2: Vec3 = (v0 - v2).cross(v - v2);
+                    if n0.dot(normal) >= 0.0 && n1.dot(normal) >= 0.0 && n2.dot(normal) >= 0.0 {
+                        is_ear = false;
+                        break;
+                    }
+                }
+
+                if is_ear {
+                    // emit (push) triangle
+                    triangles.push(vi0);
+                    triangles.push(vi1);
+                    triangles.push(vi2);
+
+                    // remove middle vertex from vertices
+                    copied_face.remove(i1);
+                    break;
+                }
+            }
+
+            earclip_fail = true;
+            break;
+        }
+
+        if earclip_fail {
+            // implement fanning
+            triangles.clear();
+            for i in 1..(face.len() - 1) {
+                triangles.push(face[0]);
+                triangles.push(face[i]);
+                triangles.push(face[i + 1]);
+            }
+        }
+
+        triangles
     }
 }

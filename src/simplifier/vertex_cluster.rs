@@ -9,7 +9,6 @@ pub fn vertex_cluster(mesh: &Mesh, hxyz: f32) -> Mesh {
     // 0. Preprocessing
 
     let mut simplified_mesh = Mesh::new(mesh.material, mesh.no_shade);
-    simplified_mesh.default_color = mesh.default_color;
     simplified_mesh.move_origin_to(mesh.get_origin());
     simplified_mesh.rotate(mesh.get_orthonormal_basis());
 

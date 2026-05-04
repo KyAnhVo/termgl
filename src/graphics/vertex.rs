@@ -4,14 +4,21 @@ use glam::{Mat4, Vec2, Vec3, Vec3Swizzles, Vec4, Vec4Swizzles};
 
 #[derive(Clone, Copy)]
 pub struct Material {
+    pub diffuse_constant: Vec3,
     pub specular_constant: Vec3,
-    pub ambient_constant: f32,
+    pub ambient_constant: Vec3,
     pub specular_exponent: f32,
 }
 
 impl Material {
-    pub fn new(specular_constant: Vec3, ambient_constant: f32, specular_exponent: f32) -> Self {
+    pub fn new(
+        diffuse_constant: Vec3,
+        specular_constant: Vec3,
+        ambient_constant: Vec3,
+        specular_exponent: f32,
+    ) -> Self {
         Self {
+            diffuse_constant,
             specular_constant,
             ambient_constant,
             specular_exponent,
@@ -32,8 +39,8 @@ impl Vertex {
         }
     }
     pub fn from_vec4(pos: Vec4) -> Self {
-        assert!(pos.w == 1.0, "default position w must be 1.0");
-        Self { pos }
+        assert!(pos.w != 0.0, "default position w must be non zero");
+        Self { pos: pos / pos.w }
     }
     pub fn to_vec3(&self) -> Vec3 {
         self.pos.xyz() / self.pos.w
