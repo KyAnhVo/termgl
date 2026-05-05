@@ -129,6 +129,14 @@ I met all three firm proposal goals (1–3) and roughly half of the stretch goal
 
 ---
 
+## Postscript — added after the project was sealed
+
+After the report was effectively finalized, I happened to test the demos on **Ghostty** and **Alacritty** instead of the kitty/xterm I had been developing against. Both render text noticeably faster, and — more importantly — they let the user zoom the terminal out to font sizes well below what a "normal" terminal exposes. At those sizes the terminal hands the renderer far more cells than the half-block backend was ever tuned for, and the punchy, recognizable pixelation that defines the look of the project at a typical 14 pt font becomes something much closer to ordinary under-sampled graphics at 8 pt or smaller. At that density, the correct answer is no longer "two pixels per cell via the `▀` half-block glyph"; it would be real anti-aliasing and supersampling, or a higher-density primitive entirely (quarter-block, Braille, or sixel).
+
+The honest takeaway is that **"terminal resolution" is no longer a single regime.** A library that wants to look right on both a classic terminal *and* on modern fast terminals at small font sizes has to detect or expose the cell count and balance two competing aesthetics: the deliberately pixelated low-res look most users associate with terminal graphics, and the much higher density that modern terminals can comfortably afford. The rendering primitive, the simplification threshold, and probably the shading mode all need to scale with available cells. TermGL today picks one fixed strategy and is therefore implicitly tuned for one regime at a time, not both — rethinking that balance is the obvious next architectural step, and it isn't a small one.
+
+---
+
 ## References
 
 - Rossignac, J. R. and Borrel, P. *Multi-resolution 3D Approximations for Rendering Complex Scenes*. In *Modeling in Computer Graphics: Methods and Applications*, pp. 455–465. <https://faculty.cc.gatech.edu/~jarek/papers/VertexClustering.pdf>
