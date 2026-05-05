@@ -20,7 +20,7 @@ fn main() {
         PI / 4.0,
     );
     let mut pipeline: Pipeline3D = Pipeline3D::new(
-        Vec3::ZERO,
+        Vec3::Z * 0.07,
         printer_type,
         camera,
         termgl::graphics::ShadingMode::Phong,

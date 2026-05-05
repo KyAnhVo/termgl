@@ -2,6 +2,8 @@
 name = "termgl"
 version = "0.1.0"
 edition = "2024"
+description = "Terminal-based Graphical rasterizer/pipeline"
+liscense-file = "LISCENCE.txt"
 
 [dependencies]
 crossterm = "0.29.0"
