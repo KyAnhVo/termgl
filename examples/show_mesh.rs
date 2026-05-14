@@ -11,52 +11,42 @@ use termgl::{
 fn main() -> io::Result<()> {
     let light_source_0: PointLightSource = PointLightSource::new(
         Vec3::X * 20.0,
-        None,
         Vec3::ONE * 50.0,
         Vec3::ONE * 10.0,
         Vec3::ONE,
         Vec3::ONE,
-        termgl::graphics::LightSourceShadingMode::Lambertian,
     );
 
     let light_source_1: PointLightSource = PointLightSource::new(
         Vec3::NEG_X * 20.0,
-        None,
         Vec3::ONE * 50.0,
         Vec3::ONE * 10.0,
         Vec3::ONE,
         Vec3::ONE,
-        termgl::graphics::LightSourceShadingMode::Lambertian,
     );
 
     let light_source_2: PointLightSource = PointLightSource::new(
         Vec3::Z * 20.0,
-        None,
         Vec3::ONE * 50.0,
         Vec3::ONE * 10.0,
         Vec3::ONE,
         Vec3::ONE,
-        termgl::graphics::LightSourceShadingMode::Lambertian,
     );
 
     let light_source_3: PointLightSource = PointLightSource::new(
         Vec3::NEG_Z * 20.0,
-        None,
         Vec3::ONE * 50.0,
         Vec3::ONE * 10.0,
         Vec3::ONE,
         Vec3::ONE,
-        termgl::graphics::LightSourceShadingMode::Lambertian,
     );
 
     let light_source_4: PointLightSource = PointLightSource::new(
         Vec3::Y * 20.0,
-        None,
         Vec3::ONE * 50.0,
         Vec3::ONE * 10.0,
         Vec3::ONE,
         Vec3::ONE,
-        termgl::graphics::LightSourceShadingMode::Lambertian,
     );
 
     let args: Vec<String> = std::env::args().collect();

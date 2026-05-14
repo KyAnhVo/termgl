@@ -100,9 +100,11 @@ impl UVMap {
     /// implement bilinear interpolation
     /// returns the interpolated color at the given UV coordinate
     /// in the rectangle [0, 1] x [0, 1] x [0, 1]
-    pub fn interpolate(&self, uv: Vec2) -> Vec3 {
+    pub fn interpolate(&self, uv_coordinate: Vec2) -> Vec3 {
         // a lot of typecasting here, expect the compiler
         // to optimize away most of it even at optimization level 1
+
+        let uv: Vec2 = uv_coordinate.fract_gl();
         let (udim_u, udim_v): (u32, u32) = self.buff.dimensions();
         let (dim_u, dim_v): (f32, f32) = (udim_u as f32, udim_v as f32);
         let (u, v): (f32, f32) = (uv.x * dim_u, uv.y * dim_v);

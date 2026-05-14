@@ -1,6 +1,7 @@
 use glam::{Vec2, Vec3, Vec4, Vec4Swizzles};
 
 use crate::graphics::{
+    UVMap,
     camera::Camera,
     mesh::{Mesh, VertexIndices},
     options::ShadingMode,
@@ -8,6 +9,21 @@ use crate::graphics::{
     vertex::{RasterVertex, Vertex},
 };
 
+pub enum GradientDirection {
+    Vertical,
+    Horizontal,
+    DiagonalDown,
+    DiagonalUp,
+}
+pub enum Background {
+    SolidColor(Vec3),
+    Gradient {
+        top: Vec3,
+        bottom: Vec3,
+        direction: GradientDirection,
+    },
+    Image(UVMap),
+}
 pub struct Rasterizer {
     pub width: usize,
     pub height: usize,
@@ -71,11 +87,12 @@ impl Rasterizer {
 
     pub fn rasterize_mesh(
         &mut self,
-        mesh: &Mesh,
+        mesh: &mut Mesh,
         shader: &Shader,
         camera: &Camera,
         shading_mode: ShadingMode,
     ) {
+        mesh.finalize_mesh();
         for i in 0..(mesh.triangles.len() / 3) {
             self.rasterize_triangle(mesh, 3 * i, shader, camera, shading_mode);
         }

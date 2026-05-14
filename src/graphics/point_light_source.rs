@@ -13,8 +13,6 @@ pub struct PointLightSource {
     /// position of the light source in world space
     pub pos: Vec3,
     /// the mesh to render in place of the point light source
-    pub wrapper_mesh: Option<Mesh>,
-    /// intensity of diffuse term (to other objects)
     pub diffuse_intensity: Vec3,
     /// intensity of specular term (to other objects)
     pub specular_intensity: Vec3,
@@ -23,35 +21,22 @@ pub struct PointLightSource {
     /// the light source mesh's shining constant
     /// matters when shading the light source itself
     pub shining_constant: Vec3,
-    /// the shading mode to use when shading the light source itself
-    pub shading_mode: LightSourceShadingMode,
 }
 
 impl PointLightSource {
     pub fn new(
         pos: Vec3,
-        wrapper_mesh: Option<Mesh>,
         diffuse_intensity: Vec3,
         specular_intensity: Vec3,
         ambient_intensity: Vec3,
         shining_constant: Vec3,
-        shading_mode: LightSourceShadingMode,
     ) -> Self {
-        assert!(
-            match &wrapper_mesh {
-                Some(mesh) => !mesh.no_shade,
-                None => true,
-            },
-            "wrapper mesh must have no_shade set to true"
-        );
         Self {
             pos,
-            wrapper_mesh,
             diffuse_intensity,
             specular_intensity,
             ambient_intensity,
             shining_constant,
-            shading_mode,
         }
     }
 

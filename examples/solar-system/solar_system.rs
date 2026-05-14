@@ -49,12 +49,10 @@ impl SolarSystem {
             sun: sun,
             sun_light: PointLightSource::new(
                 Vec3::ZERO,
-                None,
                 Vec3::ONE * 150.0,
                 Vec3::ONE,
                 Vec3::ONE * 0.1,
                 Vec3::ZERO,
-                termgl::graphics::LightSourceShadingMode::Lambertian,
             ),
             t_scale,
             t: 0.0,

@@ -3,8 +3,7 @@ use std::f32::consts::PI;
 use std::thread::sleep;
 use std::time;
 use termgl::graphics::{
-    Camera, LightSourceShadingMode, Material, Mesh, Pipeline3D, PointLightSource, PrinterType,
-    ShadingMode,
+    Camera, Material, Mesh, Pipeline3D, PointLightSource, PrinterType, ShadingMode,
 };
 
 fn main() {
@@ -16,12 +15,10 @@ fn main() {
 
     let light: PointLightSource = PointLightSource::new(
         Vec3::NEG_Z * 1.0,
-        None,
         Vec3::ONE,
         Vec3::new(0.7, 0.7, 0.7) * 20.0,
         Vec3::ZERO,
         Vec3::ONE,
-        LightSourceShadingMode::Lambertian,
     );
 
     let camera: Camera = Camera::new(
