@@ -484,9 +484,11 @@ impl Rasterizer {
     fn triangle_is_outside_camera(
         raster_vertices: (RasterVertex, RasterVertex, RasterVertex),
     ) -> bool {
+        /*
         if RasterVertex::is_back_facing(raster_vertices.0, raster_vertices.1, raster_vertices.2) {
             return true;
         }
+        */
 
         if raster_vertices.0.pos.x.abs() > 1.0
             || raster_vertices.1.pos.x.abs() > 1.0
