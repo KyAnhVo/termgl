@@ -74,3 +74,31 @@ cargo run --release --example earthscii
 ```
 
 Assets expected under `examples/assets`: `earth_bw.jpg`
+
+## Crate Structure
+ 
+```
+src/
+├── lib.rs
+├── graphics/
+│   ├── pipeline3d.rs     # High-level render loop
+│   ├── camera.rs         # View + perspective projection
+│   ├── mesh.rs           # VAO/EBO, sphere/ring generation, OBJ I/O
+│   ├── rasterizer.rs     # Triangle rasterization, depth buffer
+│   ├── shader.rs         # Accumulates light sources
+│   ├── point_light_source.rs
+│   ├── vertex.rs         # Vertex, RasterVertex, barycentric interpolation
+│   ├── uv_map.rs         # Texture, normal, and height maps
+│   ├── printer.rs        # Terminal output (color / ASCII)
+│   └── options.rs        # ShadingMode enum
+└── simplifier/
+    └── vertex_cluster.rs # Rossignac–Borrel mesh simplification
+```
+ 
+## Dependencies
+ 
+- [`glam`](https://crates.io/crates/glam) — math (Vec2/3/4, Mat3/4)
+- [`image`](https://crates.io/crates/image) — texture loading
+- [`crossterm`](https://crates.io/crates/crossterm) — terminal size and cursor control
+- [`rand`](https://crates.io/crates/rand) — random initial planet positions
+
