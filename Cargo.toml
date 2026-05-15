@@ -8,6 +8,11 @@ repository = "https://github.com/KyAnhVo/termgl"
 readme = "README.md"
 keywords = ["terminal", "graphics", "rasterizer"]
 categories = ["rendering"]
+include = [
+  "src/**/*",
+  "Cargo.toml",
+  "README.md",
+]
 
 [dependencies]
 crossterm = "0.29.0"
