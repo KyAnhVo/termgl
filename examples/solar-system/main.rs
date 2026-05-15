@@ -14,8 +14,8 @@ fn main() {
 
     let background: Background = Background::Image {
         img: UVMap::new("examples/assets/star-background.jpg"),
-        u_range: 0.5,
-        v_range: 0.5,
+        u_range: 1.0,
+        v_range: 1.0,
         uv0: Vec2::ZERO,
     };
 
