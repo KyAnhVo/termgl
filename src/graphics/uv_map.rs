@@ -81,7 +81,7 @@ impl NormalMap {
 
 /// A UV map that uses bilinear interpolation to sample colors.
 /// By default, use this for the texture map.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct UVMap {
     pub buff: RgbImage,
 }

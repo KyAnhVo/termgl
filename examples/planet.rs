@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 use std::thread::sleep;
 use std::time;
 use termgl::graphics::{
-    Camera, Material, Mesh, Pipeline3D, PointLightSource, PrinterType, ShadingMode,
+    Background, Camera, Material, Mesh, Pipeline3D, PointLightSource, PrinterType, ShadingMode,
 };
 
 fn main() {
@@ -32,7 +32,7 @@ fn main() {
     let printer_type: PrinterType = PrinterType::Ascii;
 
     let mut pipeline: Pipeline3D = Pipeline3D::new(
-        Vec3::new(0.0, 0.0, 0.07),
+        Background::SolidColor(Vec3::new(0.0, 0.0, 0.2)),
         printer_type,
         camera,
         shading_mode,

@@ -9,51 +9,104 @@ use crate::graphics::{
     vertex::{RasterVertex, Vertex},
 };
 
-pub enum GradientDirection {
-    Vertical,
-    Horizontal,
-    DiagonalDown,
-    DiagonalUp,
-}
+#[derive(Clone, PartialEq)]
 pub enum Background {
     SolidColor(Vec3),
     Gradient {
-        top: Vec3,
-        bottom: Vec3,
-        direction: GradientDirection,
+        color1: Vec3,
+        color2: Vec3,
+        direction: (f32, f32),
     },
-    Image(UVMap),
+    Image {
+        img: UVMap,
+        u_range: f32,
+        v_range: f32,
+        uv0: Vec2,
+    },
 }
+
+struct BackgroundCache {
+    background: Option<Background>,
+    buf: Vec<Vec3>,
+}
+
 pub struct Rasterizer {
     pub width: usize,
     pub height: usize,
     pub frame_buff: Vec<Vec3>,
     pub depth_buff: Vec<f32>,
-    pub background_color: Vec3,
+    background_cache: BackgroundCache,
 }
 
 impl Rasterizer {
-    pub fn new(width: usize, height: usize, background_color: Vec3) -> Self {
+    pub fn new(width: usize, height: usize) -> Self {
         Self {
             width,
             height,
-            frame_buff: vec![background_color; width * height],
+            frame_buff: vec![Vec3::ZERO; width * height],
             depth_buff: vec![f32::INFINITY; width * height],
-            background_color,
+            background_cache: BackgroundCache {
+                background: None,
+                buf: vec![Vec3::ZERO; width * height],
+            },
         }
     }
 
     pub fn resize(&mut self, width: usize, height: usize) {
+        if self.width == width && self.height == height {
+            return;
+        }
         self.width = width;
         self.height = height;
-        self.frame_buff
-            .resize(width * height, self.background_color);
+        self.frame_buff.resize(width * height, Vec3::ZERO);
         self.depth_buff.resize(width * height, f32::INFINITY);
+        self.background_cache.background = None;
     }
 
-    pub fn clear(&mut self) {
-        self.frame_buff.fill(self.background_color);
-        self.depth_buff.fill(f32::INFINITY);
+    pub fn clear(&mut self, background: &Background) {
+        match &self.background_cache.background {
+            None => {}
+            Some(cache) => {
+                if cache == background {
+                    self.frame_buff.clone_from(&self.background_cache.buf);
+                    self.depth_buff.fill(f32::INFINITY);
+                    return;
+                }
+            }
+        }
+
+        match background {
+            Background::SolidColor(val) => {
+                self.frame_buff.fill(*val);
+                self.depth_buff.fill(f32::INFINITY);
+            }
+            Background::Image {
+                img,
+                u_range,
+                v_range,
+                uv0,
+            } => {
+                for i in 0..self.width {
+                    for j in 0..self.height {
+                        // from uv0, get screen's [0, 1] range, then stretch it by (u_range, v_range)
+                        let uv: Vec2 = uv0
+                            + Vec2::new(
+                                (i as f32 + 0.5) / self.width as f32,
+                                (j as f32 + 0.5) / self.height as f32,
+                            ) * Vec2::new(*u_range, *v_range);
+                        let color: Vec3 = img.interpolate(uv);
+                        self.draw_force((i, j), f32::INFINITY, color);
+                    }
+                }
+            }
+            Background::Gradient {
+                color1: top,
+                color2: bottom,
+                direction,
+            } => {}
+        }
+        self.background_cache.background = Some(background.clone());
+        self.background_cache.buf.clone_from(&self.frame_buff);
     }
 
     pub fn ndc_to_screen(&self, ndc: Vec3) -> (isize, isize) {
@@ -83,6 +136,12 @@ impl Rasterizer {
             self.depth_buff[pixel_index] = z;
             self.frame_buff[pixel_index] = color;
         }
+    }
+
+    fn draw_force(&mut self, p: (usize, usize), z: f32, color: Vec3) {
+        let pixel_index: usize = p.1 * self.width + p.0;
+        self.depth_buff[pixel_index] = z;
+        self.frame_buff[pixel_index] = color;
     }
 
     pub fn rasterize_mesh(

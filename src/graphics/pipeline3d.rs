@@ -3,7 +3,7 @@ use crate::graphics::{
     mesh::Mesh,
     options::ShadingMode,
     printer::{Printer, PrinterType},
-    rasterizer::Rasterizer,
+    rasterizer::{Background, Rasterizer},
     shader::Shader,
     vertex::RasterVertex,
 };
@@ -26,11 +26,13 @@ pub struct Pipeline3D {
     pub shader: Shader,
     /// shading mode for the meshes
     pub shading_mode: ShadingMode,
+    /// Background
+    pub background: Background,
 }
 
 impl Pipeline3D {
     pub fn new(
-        default_background: Vec3,
+        background: Background,
         printer_type: PrinterType,
         camera: Camera,
         shading_mode: ShadingMode,
@@ -38,7 +40,7 @@ impl Pipeline3D {
         let (width_u16, height_u16) = terminal::size().unwrap();
         let (width, height) = (width_u16 as usize, height_u16 as usize * 2);
 
-        let rasterizer: Rasterizer = Rasterizer::new(width, height, default_background);
+        let rasterizer: Rasterizer = Rasterizer::new(width, height);
         let printer: Printer = Printer::new(printer_type, width, height);
         let shader: Shader = Shader::new();
 
@@ -50,6 +52,7 @@ impl Pipeline3D {
             camera,
             shader,
             shading_mode,
+            background,
         }
     }
 
@@ -68,7 +71,7 @@ impl Pipeline3D {
 
     /// Call when frame starts
     pub fn start_frame(&mut self) {
-        self.rasterizer.clear();
+        self.rasterizer.clear(&self.background);
         self.resize();
     }
 

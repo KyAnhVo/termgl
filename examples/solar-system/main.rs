@@ -3,14 +3,21 @@ mod solar_system;
 
 use std::{f32::consts::PI, thread::sleep, time};
 
-use glam::Vec3;
+use glam::{Vec2, Vec3};
 use solar_system::SolarSystem;
-use termgl::graphics::{Camera, Pipeline3D, PrinterType};
+use termgl::graphics::{Background, Camera, Pipeline3D, PrinterType, UVMap};
 
 fn main() {
     let t_scale: f32 = 1.0;
     let mut solar_system: SolarSystem = SolarSystem::new(t_scale);
     let printer_type: PrinterType = PrinterType::Color;
+
+    let background: Background = Background::Image {
+        img: UVMap::new("examples/assets/star-background.jpg"),
+        u_range: 0.5,
+        v_range: 0.5,
+        uv0: Vec2::ZERO,
+    };
 
     let cam_pos = Vec3::new(1.0, 0.5, 1.0) * 30.0;
     let camera: Camera = Camera::new(
@@ -20,7 +27,7 @@ fn main() {
         PI / 4.0,
     );
     let mut pipeline: Pipeline3D = Pipeline3D::new(
-        Vec3::Z * 0.07,
+        background,
         printer_type,
         camera,
         termgl::graphics::ShadingMode::Phong,
@@ -28,6 +35,7 @@ fn main() {
     pipeline
         .shader
         .add_point_light_source(solar_system.sun_light.clone());
+
     loop {
         pipeline.start_frame();
         solar_system.simulate(1.0 / 1000.0);

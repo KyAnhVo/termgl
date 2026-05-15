@@ -24,7 +24,7 @@ pub use shader::Shader;
 mod printer;
 mod rasterizer;
 pub use printer::{Printer, PrinterType};
-pub use rasterizer::Rasterizer;
+pub use rasterizer::{Background, Rasterizer};
 
 // the pipeline
 mod pipeline3d;

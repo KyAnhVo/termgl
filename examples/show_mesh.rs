@@ -1,10 +1,10 @@
-use std::{env, f32, io};
+use std::{env, f32, io, process::exit};
 
 use glam::{Mat3, Vec3};
 use std::thread::sleep;
 use std::time;
 use termgl::{
-    graphics::{Camera, Mesh, Pipeline3D, PointLightSource, PrinterType, ShadingMode},
+    graphics::{Background, Camera, Mesh, Pipeline3D, PointLightSource, PrinterType, ShadingMode},
     simplifier::vertex_cluster,
 };
 
@@ -50,24 +50,23 @@ fn main() -> io::Result<()> {
     );
 
     let args: Vec<String> = std::env::args().collect();
+    if args.len() != 3 || (args[2] != "simplified" && args[2] != "original") {
+        eprintln!("Usage: show_mesh <mesh> <simplified|original>");
+        exit(1);
+    }
     let file: &str = args[1].as_str();
     let mut meshes: Vec<Mesh> =
         Mesh::import_obj(format!("examples/assets/{}.obj", file).as_str(), None)?;
     meshes[0].no_shade = false;
+
     let mut mesh: Mesh = meshes.remove(0);
     mesh.scale_to(10.0, 20.0, 20.0);
     mesh.material.diffuse_constant = Vec3::ONE;
-    let mut simplifed_mesh: Mesh = vertex_cluster(&mesh, 0.2);
-    simplifed_mesh.export_obj(
-        format!("examples/assets/simplified_{}.obj", file).as_str(),
-        "",
-    )?;
-    simplifed_mesh.material.diffuse_constant = Vec3::Y;
-
-    mesh.move_origin_to(Vec3::X * 5.0);
-    simplifed_mesh.move_origin_to(Vec3::NEG_X * 5.0);
-    mesh.finalize_mesh();
-    simplifed_mesh.finalize_mesh();
+    let mut mesh_shown = if args[2] == "simplified" {
+        vertex_cluster(&mesh, 0.2)
+    } else {
+        mesh
+    };
 
     let mut cam_pos: Vec3 = Vec3::new(1.0, 1.0, 1.0) * 15.0;
     let camera: Camera = Camera::new(
@@ -81,7 +80,7 @@ fn main() -> io::Result<()> {
     let printer_type: PrinterType = PrinterType::Color;
 
     let mut pipeline: Pipeline3D = Pipeline3D::new(
-        Vec3::new(0.0, 0.0, 0.07),
+        Background::SolidColor(Vec3::new(0.0, 0.0, 0.07)),
         printer_type,
         camera,
         shading_mode,
@@ -100,8 +99,7 @@ fn main() -> io::Result<()> {
         cam_pos = rotation * cam_pos;
         pipeline.camera.look_at(Vec3::ZERO, cam_pos, Vec3::Y);
         pipeline.start_frame();
-        pipeline.render_mesh(&mut mesh);
-        pipeline.render_mesh(&mut simplifed_mesh);
+        pipeline.render_mesh(&mut mesh_shown);
         pipeline.end_frame();
 
         let elapsed = start.elapsed();
