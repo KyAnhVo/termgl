@@ -48,16 +48,16 @@ pub struct Mesh {
     pub vertices: Vec<Vertex>,
 
     /// The vertices in the VAO but in world space
-    pub vertices_world_space: Vec<Vertex>,
+    pub(crate) vertices_world_space: Vec<Vertex>,
 
     /// Used for RasterVertex after projection
-    pub raster_vertices: Vec<RasterVertex>,
+    pub(crate) raster_vertices: Vec<RasterVertex>,
 
     /// orthogonal of the vertices in object space.
     pub normals: Vec<Vec4>,
 
     /// vertex orthogonal of vertices in world space.
-    pub normals_world_space: Vec<Vec4>,
+    pub(crate) normals_world_space: Vec<Vec4>,
 
     /// uv coordinates
     pub uv: Vec<Vec2>,

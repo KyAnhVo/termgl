@@ -1,6 +1,4 @@
-use crate::graphics::{
-    camera::Camera, mesh::Mesh, options::LightSourceShadingMode, vertex::Material,
-};
+use crate::graphics::{camera::Camera, mesh::Mesh, vertex::Material};
 use glam::{Vec3, Vec4, Vec4Swizzles};
 
 /// Represents a point light source in the scene.

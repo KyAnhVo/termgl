@@ -48,7 +48,6 @@ fn main() {
         pipeline.start_frame();
 
         mesh1.rotate(rotation.clone());
-        mesh1.finalize_mesh();
         pipeline.render_mesh(&mut mesh1);
 
         pipeline.end_frame();

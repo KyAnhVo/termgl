@@ -1,6 +1,6 @@
 // the enums
 mod options;
-pub use options::{LightSourceShadingMode, ShadingMode};
+pub use options::ShadingMode;
 
 // the typical shapes
 mod mesh;

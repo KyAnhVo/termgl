@@ -52,24 +52,24 @@ impl Vertex {
 
 /// Represents projected vertex, used for perspective correct interpolation
 #[derive(Clone, Copy)]
-pub struct RasterVertex {
+pub(crate) struct RasterVertex {
     pub pos: Vec3,
     pub inv_w: f32,
 }
 
 impl RasterVertex {
-    pub fn new(pos: Vec4) -> Self {
+    pub(crate) fn new(pos: Vec4) -> Self {
         Self {
             pos: pos.xyz() / pos.w,
             inv_w: 1.0 / pos.w,
         }
     }
 
-    pub fn from_world_view(p: Vertex, m_cam: Mat4) -> Self {
+    pub(crate) fn from_world_view(p: Vertex, m_cam: Mat4) -> Self {
         Self::new(m_cam * p.pos)
     }
 
-    pub fn is_back_facing(a: Self, b: Self, c: Self) -> bool {
+    pub(crate) fn is_back_facing(a: Self, b: Self, c: Self) -> bool {
         let pa: Vec2 = a.pos.xy();
         let pb: Vec2 = b.pos.xy();
         let pc: Vec2 = c.pos.xy();
@@ -80,7 +80,7 @@ impl RasterVertex {
         (pb - pa).perp_dot(pc - pa) <= 0.0
     }
 
-    pub fn is_inside(a: Self, b: Self, c: Self, p: Vec2) -> bool {
+    pub(crate) fn is_inside(a: Self, b: Self, c: Self, p: Vec2) -> bool {
         let (pa, pb, pc): (Vec2, Vec2, Vec2) = (a.pos.xy(), b.pos.xy(), c.pos.xy());
         let (ab, bc, ca): (Vec2, Vec2, Vec2) = (pb - pa, pc - pb, pa - pc);
         let (ap, bp, cp): (Vec2, Vec2, Vec2) = (p - pa, p - pb, p - pc);
@@ -89,7 +89,7 @@ impl RasterVertex {
         (apb >= 0.0 && bpc >= 0.0 && cpa >= 0.0) || (apb <= 0.0 && bpc <= 0.0 && cpa <= 0.0)
     }
 
-    pub fn barycentric_coordinate(
+    pub(crate) fn barycentric_coordinate(
         a: RasterVertex,
         b: RasterVertex,
         c: RasterVertex,
@@ -108,7 +108,7 @@ impl RasterVertex {
         )
     }
 
-    pub fn interpolate_inv_w(
+    pub(crate) fn interpolate_inv_w(
         a: RasterVertex,
         b: RasterVertex,
         c: RasterVertex,
@@ -136,7 +136,7 @@ impl RasterVertex {
         (a_val * a.inv_w * alpha + b_val * b.inv_w * beta + c_val * c.inv_w * gamma) / inv_w
     }
 
-    pub fn interpolate_z(
+    pub(crate) fn interpolate_z(
         triangle: (RasterVertex, RasterVertex, RasterVertex),
         barycentric_coordinate: (f32, f32, f32),
         inv_w: f32,
@@ -153,7 +153,7 @@ impl RasterVertex {
         )
     }
 
-    pub fn interpolate_color(
+    pub(crate) fn interpolate_color(
         triangle: (RasterVertex, RasterVertex, RasterVertex),
         color: (Vec3, Vec3, Vec3),
         barycentric_coordinate: (f32, f32, f32),
@@ -169,7 +169,7 @@ impl RasterVertex {
         )
     }
 
-    pub fn interpolate_normals(
+    pub(crate) fn interpolate_normals(
         triangle: (RasterVertex, RasterVertex, RasterVertex),
         normals: (Vec4, Vec4, Vec4),
         barycentric_coordinate: (f32, f32, f32),
@@ -185,7 +185,7 @@ impl RasterVertex {
         )
     }
 
-    pub fn interpolate_position(
+    pub(crate) fn interpolate_position(
         triangle: (RasterVertex, RasterVertex, RasterVertex),
         world_space_triangle: (Vec4, Vec4, Vec4),
         barycentric_coordinate: (f32, f32, f32),
@@ -201,7 +201,7 @@ impl RasterVertex {
         )
     }
 
-    pub fn interpolate_uv(
+    pub(crate) fn interpolate_uv(
         triangle: (RasterVertex, RasterVertex, RasterVertex),
         uv_triangle: (Vec2, Vec2, Vec2),
         barycentric_coordinate: (f32, f32, f32),
