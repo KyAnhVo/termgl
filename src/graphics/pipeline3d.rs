@@ -11,15 +11,19 @@ use crossterm::terminal;
 use glam::{Mat4, Vec3};
 use std::io::{Write, stdout};
 
+/// High-level 3D rendering pipeline that owns the camera, shader, rasterizer, and printer.
+///
+/// Typical per-frame usage: [`Pipeline3D::start_frame`] → one or more [`Pipeline3D::render_mesh`]
+/// calls → [`Pipeline3D::end_frame`].
 pub struct Pipeline3D {
     /// screen width
     pub width: usize,
     /// screen height
     pub height: usize,
     /// Rasterizer: [-1, 1] x [-1, 1] -> buffer
-    pub rasterizer: Rasterizer,
+    rasterizer: Rasterizer,
     /// Printer to print the buffer to the terminal
-    pub printer: Printer,
+    printer: Printer,
     /// Assume 1 camera
     pub camera: Camera,
     /// shader to shade the meshes
@@ -31,6 +35,7 @@ pub struct Pipeline3D {
 }
 
 impl Pipeline3D {
+    /// Creates a pipeline sized to the current terminal, with an empty shader.
     pub fn new(
         background: Background,
         printer_type: PrinterType,

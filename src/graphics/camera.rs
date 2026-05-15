@@ -1,6 +1,11 @@
 use crossterm::terminal;
 use glam::{Mat4, Vec3, Vec4, Vec4Swizzles};
 
+/// A pinhole camera defined by its position and orientation in world space.
+///
+/// Stores the view basis (up, gaze, right) as Vec4 directions (w = 0) and the
+/// position as a Vec4 point (w = 1). Aspect ratio is kept in sync with the
+/// terminal size via [`Camera::resize`].
 #[derive(Clone, Copy)]
 pub struct Camera {
     /// up vector
@@ -23,22 +28,14 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(up: Vec4, gaze: Vec4, pos: Vec4, fov: f32) -> Self {
-        if up.w != 0.0 || gaze.w != 0.0 {
-            panic!(
-                "up ({}, {}, {}, {}) and gaze({}, {}, {}, {}) are direction, not position",
-                up.x, up.y, up.z, up.w, gaze.x, gaze.y, gaze.z, gaze.w
-            );
-        }
-        if pos.w != 1.0 {
-            panic!(
-                "pos ({}, {}, {}, {}) must have w value 1.0f32",
-                pos.x, pos.y, pos.z, pos.w
-            );
-        }
-
-        let mut up3: Vec3 = up.xyz().normalize();
-        let gaze3: Vec3 = gaze.xyz().normalize();
+    /// Creates a camera from a reference up direction, a gaze direction, a world-space
+    /// position, and a vertical field of view in radians.
+    ///
+    /// The basis is re-orthonormalized, so the provided vectors need not be perfectly
+    /// orthogonal. Aspect ratio is initialized from the current terminal size.
+    pub fn new(up: Vec3, gaze: Vec3, pos: Vec3, fov: f32) -> Self {
+        let mut up3: Vec3 = up.normalize();
+        let gaze3: Vec3 = gaze.normalize();
         let right3: Vec3 = up3.cross(gaze3);
         up3 = gaze3.cross(right3).normalize();
 
@@ -50,12 +47,14 @@ impl Camera {
             up: up3.extend(0.0),
             gaze: gaze3.extend(0.0),
             right: right3.extend(0.0),
-            pos,
+            pos: pos.extend(1.0),
             fov,
             aspect_ratio,
         }
     }
 
+    /// Reorients the camera to look at `at` from `from`, using `up` as the reference
+    /// up direction. Also updates the camera's position to `from`.
     pub fn look_at(&mut self, at: Vec3, from: Vec3, up: Vec3) {
         let mut up3: Vec3 = up.normalize();
         let gaze3: Vec3 = (at - from).normalize();
@@ -68,10 +67,12 @@ impl Camera {
         self.pos = from.extend(1.0);
     }
 
+    /// Updates the aspect ratio to match a new terminal size. Call this on terminal resize events.
     pub fn resize(&mut self, width: usize, height: usize) {
         self.aspect_ratio = width as f32 / (height as f32);
     }
 
+    /// Returns the view matrix that transforms world-space coordinates into camera space.
     pub fn m_view(self) -> Mat4 {
         let t_view: Mat4 = Mat4::from_cols(
             Vec4::new(1.0, 0.0, 0.0, 0.0),
@@ -88,6 +89,10 @@ impl Camera {
         r_view * t_view
     }
 
+    /// Returns the perspective projection matrix for near plane `n` and far plane `f`.
+    ///
+    /// Derives the frustum bounds from the camera's fov and aspect ratio, then composes
+    /// the perspective-to-ortho squish with [`Camera::m_ortho`].
     pub fn m_perspective(self, n: f32, f: f32) -> Mat4 {
         let m_persp_to_ortho: Mat4 = Mat4::from_cols(
             Vec4::new(n, 0.0, 0.0, 0.0),
@@ -105,7 +110,9 @@ impl Camera {
         m_ortho * m_persp_to_ortho
     }
 
-    pub fn m_ortho(self, l: f32, r: f32, b: f32, t: f32, n: f32, f: f32) -> Mat4 {
+    /// Returns an orthographic projection matrix mapping the axis-aligned box
+    /// [`l`, `r`] × [`b`, `t`] × [`n`, `f`] to the canonical NDC cube [-1, 1]^3.
+    pub(crate) fn m_ortho(self, l: f32, r: f32, b: f32, t: f32, n: f32, f: f32) -> Mat4 {
         let m_ortho_s: Mat4 = Mat4::from_cols(
             Vec4::new(2.0 / (r - l), 0.0, 0.0, 0.0),
             Vec4::new(0.0, 2.0 / (t - b), 0.0, 0.0),

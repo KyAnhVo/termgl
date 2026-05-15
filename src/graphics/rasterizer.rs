@@ -9,14 +9,20 @@ use crate::graphics::{
     vertex::{RasterVertex, Vertex},
 };
 
+/// The background to be rasterized underneath any scene.
 #[derive(Clone, PartialEq)]
 pub enum Background {
+    /// Just a solid color as background
     SolidColor(Vec3),
+    /// Gradient starts from (0, 0).
+    /// Any two points s.t. y-x == direction also has the same color
     Gradient {
         color1: Vec3,
         color2: Vec3,
         direction: (f32, f32),
     },
+    /// uses an image with uv map, the screen's uv depends on uv0 (top left), and the
+    /// rectangle defined by topleft (uv0), u_range (width), v_range (height).
     Image {
         img: UVMap,
         u_range: f32,
@@ -30,16 +36,16 @@ struct BackgroundCache {
     buf: Vec<Vec3>,
 }
 
-pub struct Rasterizer {
-    pub width: usize,
-    pub height: usize,
-    pub frame_buff: Vec<Vec3>,
-    pub depth_buff: Vec<f32>,
+pub(crate) struct Rasterizer {
+    pub(crate) width: usize,
+    pub(crate) height: usize,
+    pub(crate) frame_buff: Vec<Vec3>,
+    pub(crate) depth_buff: Vec<f32>,
     background_cache: BackgroundCache,
 }
 
 impl Rasterizer {
-    pub fn new(width: usize, height: usize) -> Self {
+    pub(crate) fn new(width: usize, height: usize) -> Self {
         Self {
             width,
             height,
@@ -52,7 +58,7 @@ impl Rasterizer {
         }
     }
 
-    pub fn resize(&mut self, width: usize, height: usize) {
+    pub(crate) fn resize(&mut self, width: usize, height: usize) {
         if self.width == width && self.height == height {
             return;
         }
@@ -63,7 +69,7 @@ impl Rasterizer {
         self.background_cache.background = None;
     }
 
-    pub fn clear(&mut self, background: &Background) {
+    pub(crate) fn clear(&mut self, background: &Background) {
         match &self.background_cache.background {
             None => {}
             Some(cache) => {
@@ -100,23 +106,33 @@ impl Rasterizer {
                 }
             }
             Background::Gradient {
-                color1: top,
-                color2: bottom,
-                direction,
-            } => {}
+                color1,
+                color2,
+                direction: (dx, dy),
+            } => {
+                let w = self.width.max(1) as f32;
+                let h = self.height.max(1) as f32;
+                for j in 0..self.height {
+                    for i in 0..self.width {
+                        let t = (i as f32 / w * dx + j as f32 / h * dy).clamp(0.0, 1.0);
+                        let color = *color1 * (1.0 - t) + *color2 * t;
+                        self.draw_force((i, j), f32::INFINITY, color);
+                    }
+                }
+            }
         }
         self.background_cache.background = Some(background.clone());
         self.background_cache.buf.clone_from(&self.frame_buff);
     }
 
-    pub fn ndc_to_screen(&self, ndc: Vec3) -> (isize, isize) {
+    fn ndc_to_screen(&self, ndc: Vec3) -> (isize, isize) {
         // map [-1, 1] x [-1, 1] to [0, width - 1] x [height - 1, 0]
         let x: isize = ((ndc.x + 1.0) * 0.5 * (self.width as f32 - 1.0)).round() as isize;
         let y: isize = ((1.0 - ndc.y) * 0.5 * (self.height as f32 - 1.0)).round() as isize;
         (x, y)
     }
 
-    pub fn screen_to_ndc(&self, screen_xy: (usize, usize)) -> Vec2 {
+    fn screen_to_ndc(&self, screen_xy: (usize, usize)) -> Vec2 {
         // map [0, width - 1] x [height - 1, 0] to [-1, 1] x [-1, 1]
 
         // first, map to [0, 1] x [1, 0]. Add 0.5 to get into middle of pixel.
@@ -144,7 +160,7 @@ impl Rasterizer {
         self.frame_buff[pixel_index] = color;
     }
 
-    pub fn rasterize_mesh(
+    pub(crate) fn rasterize_mesh(
         &mut self,
         mesh: &mut Mesh,
         shader: &Shader,
@@ -157,7 +173,7 @@ impl Rasterizer {
         }
     }
 
-    pub fn rasterize_triangle(
+    fn rasterize_triangle(
         &mut self,
         mesh: &Mesh,
         start_ind: usize,

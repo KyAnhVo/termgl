@@ -1,4 +1,4 @@
-use std::{env, f32, io, process::exit};
+use std::{f32, io, process::exit};
 
 use glam::{Mat3, Vec3};
 use std::thread::sleep;
@@ -70,9 +70,9 @@ fn main() -> io::Result<()> {
 
     let mut cam_pos: Vec3 = Vec3::new(1.0, 1.0, 1.0) * 15.0;
     let camera: Camera = Camera::new(
-        Vec3::Y.extend(0.0),
-        -cam_pos.normalize().extend(0.0),
-        cam_pos.extend(1.0),
+        Vec3::Y,
+        -cam_pos.normalize(),
+        cam_pos,
         f32::consts::PI / 4.0,
     );
 

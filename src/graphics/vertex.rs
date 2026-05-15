@@ -2,6 +2,7 @@ use std::ops::{Add, Div, Mul};
 
 use glam::{Mat4, Vec2, Vec3, Vec3Swizzles, Vec4, Vec4Swizzles};
 
+/// Phong shading material constants for a mesh.
 #[derive(Clone, Copy)]
 pub struct Material {
     pub diffuse_constant: Vec3,
@@ -11,6 +12,7 @@ pub struct Material {
 }
 
 impl Material {
+    /// Creates a material with the given Phong shading constants.
     pub fn new(
         diffuse_constant: Vec3,
         specular_constant: Vec3,
@@ -26,25 +28,35 @@ impl Material {
     }
 }
 
+/// A point in world space stored in homogeneous coordinates with w = 1.
 #[derive(Clone, Copy)]
 pub struct Vertex {
-    // position in world view (w = 1.0)
     pub pos: Vec4,
 }
 
 impl Vertex {
+    /// Creates a vertex from a 3D position, setting w = 1.
     pub fn from_vec3(pos: Vec3) -> Self {
         Self {
             pos: pos.extend(1.0),
         }
     }
+
+    /// Creates a vertex from a homogeneous Vec4, normalizing so that w = 1.
+    ///
+    /// # Panics
+    /// Panics if `pos.w == 0` (direction vector, not a point).
     pub fn from_vec4(pos: Vec4) -> Self {
         assert!(pos.w != 0.0, "default position w must be non zero");
         Self { pos: pos / pos.w }
     }
+
+    /// Returns the position as a 3D vector by dividing xyz by w.
     pub fn to_vec3(&self) -> Vec3 {
         self.pos.xyz() / self.pos.w
     }
+
+    /// Returns the position as a homogeneous Vec4 normalized so that w = 1.
     pub fn to_vec4(&self) -> Vec4 {
         self.pos / self.pos.w
     }
@@ -74,19 +86,10 @@ impl RasterVertex {
         let pb: Vec2 = b.pos.xy();
         let pc: Vec2 = c.pos.xy();
 
-        return false;
+        // return false;
 
         // gte because higher z => further from screen
         (pb - pa).perp_dot(pc - pa) <= 0.0
-    }
-
-    pub(crate) fn is_inside(a: Self, b: Self, c: Self, p: Vec2) -> bool {
-        let (pa, pb, pc): (Vec2, Vec2, Vec2) = (a.pos.xy(), b.pos.xy(), c.pos.xy());
-        let (ab, bc, ca): (Vec2, Vec2, Vec2) = (pb - pa, pc - pb, pa - pc);
-        let (ap, bp, cp): (Vec2, Vec2, Vec2) = (p - pa, p - pb, p - pc);
-
-        let (apb, bpc, cpa): (f32, f32, f32) = (ap.perp_dot(ab), bp.perp_dot(bc), cp.perp_dot(ca));
-        (apb >= 0.0 && bpc >= 0.0 && cpa >= 0.0) || (apb <= 0.0 && bpc <= 0.0 && cpa <= 0.0)
     }
 
     pub(crate) fn barycentric_coordinate(

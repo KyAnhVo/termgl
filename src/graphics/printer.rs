@@ -1,23 +1,26 @@
 use glam::Vec3;
 
+/// Selects the terminal rendering mode for [`crate::graphics::Pipeline3D`].
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum PrinterType {
+    /// Renders using ASCII characters mapped to luminance (no color).
     Ascii,
+    /// Renders using Unicode half-block characters with 24-bit ANSI color codes.
     Color,
 }
 
-pub struct Printer {
-    pub printer_type: PrinterType,
-    pub width: usize,
-    pub height: usize,
-    pub buff: Vec<u8>,
+pub(crate) struct Printer {
+    pub(crate) printer_type: PrinterType,
+    pub(crate) width: usize,
+    pub(crate) height: usize,
+    pub(crate) buff: Vec<u8>,
 }
 
 impl Printer {
     const START_SEQUENCE: &[u8] = b"\x1b[H\x1b[?25l";
     const RAMP: &[u8] = b" .:-=+*#%@";
 
-    pub fn new(printer_type: PrinterType, width: usize, height: usize) -> Self {
+    pub(crate) fn new(printer_type: PrinterType, width: usize, height: usize) -> Self {
         Self {
             printer_type,
             width,
@@ -26,12 +29,12 @@ impl Printer {
         }
     }
 
-    pub fn resize(&mut self, width: usize, height: usize) {
+    pub(crate) fn resize(&mut self, width: usize, height: usize) {
         self.width = width;
         self.height = height / 2;
     }
 
-    pub fn print(&mut self, color: &[Vec3]) {
+    pub(crate) fn print(&mut self, color: &[Vec3]) {
         self.buff.clear();
         self.buff.extend_from_slice(Printer::START_SEQUENCE);
 

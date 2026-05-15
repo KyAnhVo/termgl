@@ -26,6 +26,7 @@ pub struct VertexIndices {
 }
 
 impl VertexIndices {
+    /// Creates a `VertexIndices` from explicit vertex, normal, and UV indices into the mesh arrays.
     pub fn new(vertex_ind: usize, normal_ind: usize, uv_ind: usize) -> Self {
         Self {
             vertex_ind,
@@ -91,6 +92,8 @@ pub struct Mesh {
 }
 
 impl Mesh {
+    /// Creates an empty mesh with the given material. Set `no_shade` to skip Phong shading
+    /// (e.g. for light sources or unlit background geometry).
     pub fn new(material: Material, no_shade: bool) -> Self {
         Self {
             origin: Vec3::ZERO,
@@ -111,10 +114,12 @@ impl Mesh {
         }
     }
 
+    /// Returns the mesh origin in world space.
     pub fn get_origin(&self) -> Vec3 {
         self.origin
     }
 
+    /// Returns the mesh's object-space orthonormal basis (columns = right, up, forward).
     pub fn get_orthonormal_basis(&self) -> Mat3 {
         self.orthonormal_basis
     }
@@ -125,11 +130,13 @@ impl Mesh {
         self.no_change = false;
     }
 
-    pub fn add_normal(&mut self, normal: Vec4) {
-        self.normals.push(normal);
+    /// Adds a surface normal (direction vector) to the mesh.
+    pub fn add_normal(&mut self, normal: Vec3) {
+        self.normals.push(normal.extend(0.0));
         self.no_change = false;
     }
 
+    /// Adds a UV texture coordinate to the mesh.
     pub fn add_uv(&mut self, uv: Vec2) {
         self.uv.push(uv);
     }
@@ -142,6 +149,7 @@ impl Mesh {
         self.triangles.append(&mut vec![a, b, c]);
     }
 
+    /// Scales all vertices uniformly by `scale_factor`, preserving the homogeneous w component.
     pub fn scale_by(&mut self, scale_factor: f32) {
         for vertex in &mut self.vertices {
             let w: f32 = vertex.pos.w;
@@ -150,6 +158,8 @@ impl Mesh {
         }
     }
 
+    /// Uniformly scales the mesh to fit within the given axis-aligned bounding box dimensions,
+    /// preserving aspect ratio by using the smallest per-axis scale factor.
     pub fn scale_to(&mut self, box_x: f32, box_y: f32, box_z: f32) {
         let (mut x_min, mut x_max): (f32, f32) = (f32::INFINITY, f32::NEG_INFINITY);
         let (mut y_min, mut y_max): (f32, f32) = (f32::INFINITY, f32::NEG_INFINITY);
@@ -278,6 +288,8 @@ impl Mesh {
 //////////////////////////////////////////////////
 
 impl Mesh {
+    /// Creates a UV sphere centered at `origin` with radius `rad`.
+    /// `lat` controls the number of latitude rings (pole-to-pole) and `long` the longitude slices.
     pub fn create_sphere(
         rad: f32,
         origin: Vec3,
@@ -306,7 +318,7 @@ impl Mesh {
                 let v: f32 = i as f32 / lat as f32; // [0, 1] latitude
 
                 mesh.add_vertex(Vertex::from_vec3(pos));
-                mesh.add_normal(normal.extend(0.0));
+                mesh.add_normal(normal);
                 mesh.add_uv(Vec2::new(u, v));
             }
         }
@@ -334,6 +346,12 @@ impl Mesh {
         mesh
     }
 
+    /// Creates a flat ring (annulus) in the XZ plane centered at `origin`, with inner radius
+    /// `r_in`, outer radius `r_out`, and angular step `d_theta` (radians). Both top and bottom
+    /// faces are generated with correct outward normals.
+    ///
+    /// # Panics
+    /// Panics if `r_in <= 0` or `r_out <= r_in`.
     pub fn create_ring(
         r_in: f32,
         r_out: f32,
@@ -352,8 +370,8 @@ impl Mesh {
         // bottom-inner, bottom-outer. Top vertices carry +Y normals,
         // bottom carry -Y, so each face shades correctly regardless of
         // which side the camera is on.
-        let n_up: Vec4 = Vec3::Y.extend(0.0);
-        let n_down: Vec4 = Vec3::NEG_Y.extend(0.0);
+        let n_up: Vec3 = Vec3::Y;
+        let n_down: Vec3 = Vec3::NEG_Y;
 
         for i in 0..=n {
             let theta: f32 = 2.0 * PI * i as f32 / n as f32;

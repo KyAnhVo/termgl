@@ -10,7 +10,7 @@ use glam::{Vec3, Vec4, Vec4Swizzles};
 pub struct PointLightSource {
     /// position of the light source in world space
     pub pos: Vec3,
-    /// the mesh to render in place of the point light source
+    /// intensity of diffuse term (to other objects)
     pub diffuse_intensity: Vec3,
     /// intensity of specular term (to other objects)
     pub specular_intensity: Vec3,
@@ -22,6 +22,8 @@ pub struct PointLightSource {
 }
 
 impl PointLightSource {
+    /// Creates a point light source at `pos` with the given Phong intensity components.
+    /// `shining_constant` is the emissive color used when shading the light source mesh itself.
     pub fn new(
         pos: Vec3,
         diffuse_intensity: Vec3,
@@ -75,6 +77,7 @@ impl PointLightSource {
         )
     }
 
+    /// Scales all three intensity components by independent non-negative factors.
     pub fn scale_intensity(&mut self, diffuse_scale: f32, specular_scale: f32, ambient_scale: f32) {
         assert!(diffuse_scale >= 0.0 && specular_scale >= 0.0 && ambient_scale >= 0.0);
         self.diffuse_intensity *= diffuse_scale;

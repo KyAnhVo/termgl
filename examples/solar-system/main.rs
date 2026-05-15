@@ -20,12 +20,7 @@ fn main() {
     };
 
     let cam_pos = Vec3::new(1.0, 0.5, 1.0) * 30.0;
-    let camera: Camera = Camera::new(
-        Vec3::Y.extend(0.0),
-        (-cam_pos).normalize().extend(0.0),
-        cam_pos.extend(1.0),
-        PI / 4.0,
-    );
+    let camera: Camera = Camera::new(Vec3::Y, (-cam_pos).normalize(), cam_pos, PI / 4.0);
     let mut pipeline: Pipeline3D = Pipeline3D::new(
         background,
         printer_type,

@@ -85,7 +85,7 @@ pub fn vertex_cluster(mesh: &Mesh, hxyz: f32) -> Mesh {
         cells.cluster_n[i] =
             (cells.cluster_n[i] / triangle_weighted_cell_sum_grades[i]).normalize();
         simplified_mesh.add_uv(cells.cluster_uv[i]);
-        simplified_mesh.add_normal(cells.cluster_n[i].extend(0.0));
+        simplified_mesh.add_normal(cells.cluster_n[i]);
     }
 
     // 5. Connect using triangles

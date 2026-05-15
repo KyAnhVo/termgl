@@ -11,6 +11,7 @@ pub struct HeightMap {
 }
 
 impl HeightMap {
+    /// Loads a height map image from `path`. `height_scale` controls the parallax displacement strength.
     pub fn new(path: &str, height_scale: f32) -> Self {
         Self {
             map: UVMap::new(path),
@@ -34,6 +35,7 @@ pub struct NormalMap {
 }
 
 impl NormalMap {
+    /// Loads a normal map image from `path`.
     pub fn new(path: &str) -> Self {
         Self {
             map: UVMap::new(path),
@@ -87,6 +89,7 @@ pub struct UVMap {
 }
 
 impl UVMap {
+    /// Loads an image from `path` for use as a texture. Panics if the path is invalid.
     pub fn new(path: &str) -> Self {
         // Note: unwrap since panic here is better than returning an error,
         // since a mesh that uses this UV map will likely:

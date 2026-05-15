@@ -21,12 +21,7 @@ fn main() {
         Vec3::ONE,
     );
 
-    let camera: Camera = Camera::new(
-        Vec3::Y.extend(0.0),
-        Vec3::Z.extend(0.0),
-        (Vec3::NEG_Z * 2.0).extend(1.0),
-        PI / 4.0,
-    );
+    let camera: Camera = Camera::new(Vec3::Y, Vec3::Z, Vec3::NEG_Z * 2.0, PI / 4.0);
 
     let shading_mode: ShadingMode = ShadingMode::Phong;
     let printer_type: PrinterType = PrinterType::Ascii;
