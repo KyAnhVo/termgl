@@ -3,7 +3,11 @@ name = "termgl"
 version = "0.1.0"
 edition = "2024"
 description = "Terminal-based Graphical rasterizer/pipeline"
-license-file = "LISCENCE.txt"
+license = "MIT"
+repository = "https://github.com/KyAnhVo/termgl"
+readme = "README.md"
+keywords = ["terminal", "graphics", "rasterizer"]
+categories = ["rendering"]
 
 [dependencies]
 crossterm = "0.29.0"
